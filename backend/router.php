@@ -13,6 +13,8 @@ class Route {
 $urlpatterns = [
     new Route("/", "/routes/home.php", "GET"),
 
+    new Route("/campaigns", "/routes/campaigns.php"),
+
     new Route("/login", "/routes/auth/login.php", "GET"),
     new Route("/login", "AuthController@login", "POST"),
 

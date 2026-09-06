@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS Campaign (
   image_url VARCHAR(255),
   date_cloture DATETIME,
   organiser_id INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (organiser_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS Category (
   category_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(30) NOT NULL,
   campaign_id INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (campaign_id) REFERENCES Campaign(campaign_id) ON DELETE CASCADE
 );
 
@@ -32,5 +34,15 @@ CREATE TABLE IF NOT EXISTS Candidate (
   description VARCHAR(255),
   bio TEXT,
   category_id INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (category_id) REFERENCES Category(category_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Vote (
+  vote_id INT PRIMARY KEY AUTO_INCREMENT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  candidate_id INT,
+  payment_method ENUM("MOMO", "OM"),
+  vote_count INT,
+  FOREIGN KEY (candidate_id) REFERENCES Candidate(candidate_id) ON DELETE CASCADE
 );
