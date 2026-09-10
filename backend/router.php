@@ -1,6 +1,7 @@
 <?php
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/authController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/campaignController.php';
 
 class Route {
     public function __construct(
@@ -13,8 +14,13 @@ class Route {
 $urlpatterns = [
     new Route("/", "/routes/home.php", "GET"),
 
-    new Route("/campaigns", "/routes/campaigns.php"),
-
+    new Route("/campaigns", "/routes/campaign_list.php"),
+    new Route("/my-campaigns", "/routes/my_campaigns.php"),
+    
+    // Dynamic URL parameters using {param} syntax
+    new Route("/campaigns/{id}", "/routes/campaign_page.php", "GET"),
+    new Route("/campaigns/{id}/votes", "CampaignController@recordVote", "POST"),
+ 
     new Route("/login", "/routes/auth/login.php", "GET"),
     new Route("/login", "AuthController@login", "POST"),
 
@@ -29,16 +35,28 @@ $routeFound = false;
 foreach ($urlpatterns as $route) {
     $methodMatches = empty($route->method) || strtoupper($route->method) === $method;
 
-    if ($route->uri === $requestUri && $methodMatches) {
+    // Convert route placeholder `{param}` into regex pattern `(?P<param>[^/]+)`
+    $pattern = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '(?P<$1>[^/]+)', $route->uri);
+    $pattern = "#^" . $pattern . "$#";
+
+    if ($methodMatches && preg_match($pattern, $requestUri, $matches)) {
         $routeFound = true;
 
+        // Filter out numeric keys from preg_match to get clean named parameters
+        $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
         if (str_ends_with($route->target, '.php')) {
+            // Option 1: Expose params via global/REQUEST array for procedural PHP files
+            $_GET = array_merge($_GET, $params);
             require_once $_SERVER["DOCUMENT_ROOT"] . $route->target;
         } else {
+            // Option 2: Pass dynamic parameters into Controller method
             try {
                 [$controllerName, $action] = explode('@', $route->target);
                 $controller = new $controllerName();
-                $response = $controller->$action();
+                
+                // Pass the extracted parameter array into controller action
+                $response = call_user_func_array([$controller, $action], $params);
 
                 header("Content-Type: application/json");
                 echo json_encode($response);
@@ -67,5 +85,3 @@ if (!$routeFound) {
         require_once $_SERVER["DOCUMENT_ROOT"] . "/views/404.html";
     }
 }
-
-?>

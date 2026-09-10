@@ -3,7 +3,7 @@ require_once $_SERVER["DOCUMENT_ROOT"] . '/controllers/campaignController.php';
 
 try {
     $campaignController = new CampaignController();
-    $sortedCampaigns = $campaignController->getPopularCampaigns(3);
+    $sortedCampaigns = $campaignController->getActivePopularCampaigns(3);
 }
 catch (PDOException $e) {
     error_log($e->getMessage());
@@ -23,31 +23,26 @@ catch (PDOException $e) {
 
     <!-- Navbar Component (navbar.php) -->
     <header class="fixed top-0 left-0 right-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl transition-all">
-        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            <!-- Left: Brand Identity -->
-            <div class="flex items-center gap-3 sm:gap-6">
-                <a href="index.php" class="group flex items-center gap-2.5 text-left">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition-transform group-hover:scale-105">
-                        <!-- Sparkles Icon -->
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <span class="font-display flex items-center gap-1.5 text-base font-bold tracking-tight text-white">
-                            IVote
-                        </span>
-                        <span class="hidden text-[10px] text-slate-400 sm:block">Vote & Paiement Mobile Money</span>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Right Area -->
-            <div class="flex items-center gap-2">
-                <!-- Zone droite laissée vide conformément au composant d'origine -->
-            </div>
-        </div>
-    </header>
+		<div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+			<div class="flex items-center gap-3 sm:gap-6">
+				<a href="/" class="group flex items-center gap-2.5 text-left">
+					<div class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition-transform group-hover:scale-105">
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+						</svg>
+					</div>
+					<div>
+						<span class="font-display flex items-center gap-1.5 text-base font-bold tracking-tight text-white">IVote</span>
+						<span class="hidden text-[10px] text-slate-400 sm:block">Vote & Paiement Mobile Money</span>
+					</div>
+				</a>
+			</div>
+			<div class="flex items-center gap-3">
+				<a href="/campaigns" class="text-xs font-semibold text-slate-300 hover:text-white transition-colors">Campagnes</a>
+				<a href="/login" class="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-500">Espace Organisateur</a>
+			</div>
+		</div>
+	</header>
 
     <!-- Zone de contenu principal -->
     <main class="flex-1 space-y-16 pt-24 pb-16">
@@ -91,28 +86,44 @@ catch (PDOException $e) {
 
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     <?php foreach ($sortedCampaigns as $campaign): ?>
-                        <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl transition-all hover:border-slate-700">
-                            <?php if (!empty($campaign['image_url'])): ?>
-                                <img src="<?= htmlspecialchars($campaign['image_url']) ?>" alt="<?= htmlspecialchars($campaign['title']) ?>" class="h-48 w-full object-cover">
-                            <?php else: ?>
-                                <div class="flex h-48 w-full items-center justify-center bg-slate-800 text-xs text-slate-500">Aucune image disponible</div>
-                            <?php endif; ?>
-                            
-                            <div class="p-5">
-                                <h3 class="truncate text-lg font-bold text-white"><?= htmlspecialchars($campaign['title']) ?></h3>
-                                <p class="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-400"><?= htmlspecialchars($campaign['description']) ?></p>
-                                
-                                <div class="mt-5 flex items-center justify-between border-t border-slate-800/80 pt-4">
-                                    <span class="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400">
-                                        <?= number_format($campaign['totalVotes'] ?? 0) ?> votes
-                                    </span>
-                                    <a href="campaign_details.php?id=<?= $campaign['campaign_id'] ?>" class="flex items-center gap-1 text-xs font-bold text-white transition-colors hover:text-emerald-400">
-                                        Participer 
-                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        <?php
+                            $campaignId = (int) ($campaign['campaign_id'] ?? 0);
+                            $imageUrl = $campaign['image_url'] ?? 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1400&auto=format&fit=crop&q=80';
+                            $category = $campaign['categories'] ?? 'Campagne de vote';
+                            $organization = $campaign['organizer_name'] ?? 'Organisateur IVote';
+                            $description = $campaign['description'] ?? 'Participez à cette campagne de vote.';
+                            $candidateCount = (int) ($campaign['candidate_count'] ?? 0);
+                        ?>
+                        <article class="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-lg transition-all hover:border-slate-700">
+                            <div class="relative h-48 w-full bg-slate-950">
+                                <img src="<?= htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($campaign['title'], ENT_QUOTES, 'UTF-8') ?>" class="h-full w-full object-cover opacity-85">
+                                <div class="absolute inset-x-3 top-3 flex items-center justify-between">
+                                    <span class="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">• En Direct</span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-1 flex-col justify-between space-y-4 p-5">
+                                <div class="space-y-2">
+                                    <div class="text-xs text-emerald-400"><?= htmlspecialchars($organization, ENT_QUOTES, 'UTF-8') ?></div>
+                                    <h3 class="line-clamp-1 text-lg font-bold text-white"><?= htmlspecialchars($campaign['title'], ENT_QUOTES, 'UTF-8') ?></h3>
+                                    <p class="line-clamp-2 text-xs text-slate-400"><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p>
+                                </div>
+
+                                <div class="space-y-3 border-t border-slate-800/80 pt-3">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="font-medium text-slate-300">
+                                            <?= $candidateCount ?> candidat<?= $candidateCount > 1 ? 's' : '' ?>
+                                        </span>
+                                        <span class="font-mono font-semibold text-slate-300">
+                                            🗳️ <?= number_format($campaign['totalVotes'] ?? 0) ?> votes
+                                        </span>
+                                    </div>
+                                    <a href="/campaigns/<?= $campaignId ?>" class="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-emerald-500">
+                                        Accéder au Vote en Direct →
                                     </a>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     <?php endforeach; ?>
                 </div>
             </section>
@@ -210,9 +221,9 @@ catch (PDOException $e) {
                 <div>
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-white">Navigation</h3>
                     <ul class="mt-4 space-y-2 text-xs">
-                        <li><a href="index.php" class="transition-colors hover:text-emerald-400">Accueil</a></li>
-                        <li><a href="index.php#campaigns" class="transition-colors hover:text-emerald-400">Explorer les campagnes</a></li>
-                        <li><a href="login.php" class="transition-colors hover:text-emerald-400">Espace organisateur</a></li>
+                        <li><a href="/" class="transition-colors hover:text-emerald-400">Accueil</a></li>
+                        <li><a href="/campaigns" class="transition-colors hover:text-emerald-400">Explorer les campagnes</a></li>
+                        <li><a href="/login" class="transition-colors hover:text-emerald-400">Espace organisateur</a></li>
                     </ul>
                 </div>
 
