@@ -14,15 +14,28 @@ class Route {
 $urlpatterns = [
     new Route("/", "/routes/home.php", "GET"),
 
-    new Route("/campaigns", "/routes/campaign_list.php"),
-    new Route("/my-campaigns", "/routes/my_campaigns.php"),
+    new Route("/campaigns", "/routes/campaigns.php"),
+    new Route("/dashboard", "/routes/dashboard.php"),
     
-    // Dynamic URL parameters using {param} syntax
+    new Route("/campaigns/new", "/routes/new_campaign.php", "GET"),
+    new Route("/campaigns/new", "CampaignController@createCampaign", "POST"),
+
+    // Routes Campagne & Tableau de bord
     new Route("/campaigns/{id}", "/routes/campaign_page.php", "GET"),
     new Route("/campaigns/{id}/votes", "CampaignController@recordVote", "POST"),
+    new Route("/campaigns/{id}/dashboard", "/routes/campaign_dashboard.php", "GET"),
+    new Route("/campaigns/{id}/update", "CampaignController@updateCampaign", "POST"),
+    new Route("/campaigns/{id}/status", "CampaignController@updateStatus", "POST"),
+    new Route("/campaigns/{id}/relaunch", "CampaignController@relaunch", "POST"),
+    new Route("/campaigns/{id}/update-photo", "CampaignController@updatePhoto", "POST"),
+    new Route("/campaigns/{id}/candidates", "CampaignController@addCandidate", "POST"),
+    new Route("/campaigns/{id}/payouts", "CampaignController@createPayout", "POST"),
  
     new Route("/login", "/routes/auth/login.php", "GET"),
     new Route("/login", "AuthController@login", "POST"),
+    
+    new Route("/logout", "/routes/auth/logout.php", "GET"),
+    new Route("/logout", "AuthController@logout", "POST"),
 
     new Route("/signup", "/routes/auth/signup.php", "GET"),
     new Route("/signup", "AuthController@signup", "POST"),
@@ -82,6 +95,6 @@ if (!$routeFound) {
         include_once $staticFilePath;
     } else {
         http_response_code(404);
-        require_once $_SERVER["DOCUMENT_ROOT"] . "/views/404.html";
+        require_once $_SERVER["DOCUMENT_ROOT"] . "/routes/404.html";
     }
 }

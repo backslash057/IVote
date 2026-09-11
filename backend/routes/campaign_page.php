@@ -376,7 +376,7 @@ $candidateCount = (int) ($campaign['candidateCount'] ?? 0);
 					<ul class="mt-4 space-y-2 text-xs">
 						<li><a href="/" class="transition-colors hover:text-emerald-400">Accueil</a></li>
 						<li><a href="/campaigns" class="transition-colors hover:text-emerald-400">Explorer les campagnes</a></li>
-						<li><a href="/login.php" class="transition-colors hover:text-emerald-400">Espace organisateur</a></li>
+						<li><a href="/dashboard" class="transition-colors hover:text-emerald-400">Espace organisateur</a></li>
 					</ul>
 				</div>
 
@@ -392,9 +392,7 @@ $candidateCount = (int) ($campaign['candidateCount'] ?? 0);
 				<div>
 					<h3 class="text-xs font-semibold uppercase tracking-wider text-white">Support</h3>
 					<ul class="mt-4 space-y-2 text-xs">
-						<li><a href="#" class="transition-colors hover:text-emerald-400">Centre d'aide</a></li>
-						<li><a href="#" class="transition-colors hover:text-emerald-400">Contact</a></li>
-						<li><span class="text-emerald-400">support@ivote.com</span></li>
+						<li><a href="mailto:support@ivote.com" class="text-emerald-400">support@ivote.com</a></li>
 					</ul>
 				</div>
 			</div>
