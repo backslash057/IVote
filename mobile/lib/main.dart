@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'models/campaign.dart';
-import 'services/campaign_services.dart';
-import 'widgets/hero_section.dart';
-import 'widgets/campaign_card.dart';
-import 'widgets/empty_state.dart';
+
+import 'screens/home_page.dart';
+import 'theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,137 +14,56 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'IVote - Campagnes',
+      title: 'IVote',
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF020617), // bg-slate-950
+        scaffoldBackgroundColor: AppColors.bg,
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.emerald,
+          secondary: AppColors.amber,
+          surface: AppColors.surface,
+        ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xE6020617), // bg-slate-950/90
+          backgroundColor: AppColors.bg,
           elevation: 0,
+          centerTitle: false,
         ),
-      ),
-      home: const CampaignsPage(),
-    );
-  }
-}
-
-class CampaignsPage extends StatefulWidget {
-  const CampaignsPage({super.key});
-
-  @override
-  State<CampaignsPage> createState() => _CampaignsPageState();
-}
-
-class _CampaignsPageState extends State<CampaignsPage> {
-  final CampaignService _campaignService = CampaignService();
-  late Future<List<Campaign>> _campaignsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _campaignsFuture = _campaignService.fetchCampaigns();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
-        child: Container(
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
           ),
-          child: AppBar(
-            title: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF059669), // bg-emerald-600
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x4D059669),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.how_to_vote, size: 18, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'IVote',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Vote & Paiement Mobile Money',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.emerald, width: 1.5),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.emerald,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: AppColors.surfaceAlt,
+          contentTextStyle: TextStyle(color: Colors.white),
+        ),
       ),
-      body: FutureBuilder<List<Campaign>>(
-        future: _campaignsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF059669)),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Erreur: ${snapshot.error}',
-                style: const TextStyle(color: Color(0xFFEF4444)),
-              ),
-            );
-          }
-
-          final campaigns = snapshot.data ?? [];
-
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            itemCount: campaigns.isEmpty ? 2 : campaigns.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: HeroSection(campaigns: campaigns),
-                );
-              }
-
-              if (campaigns.isEmpty) {
-                return const EmptyState();
-              }
-
-              final campaign = campaigns[index - 1];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: CampaignCard(campaign: campaign),
-              );
-            },
-          );
-        },
-      ),
+      home: const HomePage(),
     );
   }
 }

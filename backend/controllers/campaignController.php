@@ -269,7 +269,8 @@ class CampaignController {
         $stmtCand = $this->db->prepare("
             SELECT cand.*, 
                    cat.name AS category_name,
-                   COALESCE(SUM(v.vote_count), 0) AS total_votes
+                   COALESCE(SUM(v.vote_count), 0) AS total_votes,
+                   COALESCE(SUM(v.amount_fcfa), 0) AS candidate_revenue
             FROM Candidate cand
             LEFT JOIN Category cat ON cand.category_id = cat.category_id
             LEFT JOIN Vote v ON cand.candidate_id = v.candidate_id
@@ -281,12 +282,11 @@ class CampaignController {
         $candidates = $stmtCand->fetchAll(PDO::FETCH_ASSOC);
 
         $totalVotes = array_sum(array_column($candidates, 'total_votes'));
-        $pricePerVote = (int)$campaign['price_per_vote'];
-        $totalRevenue = $totalVotes * $pricePerVote;
+        $totalRevenue = array_sum(array_column($candidates, 'candidate_revenue'));
 
         foreach ($candidates as &$cand) {
             $cand['percentage'] = $totalVotes > 0 ? round(($cand['total_votes'] / $totalVotes) * 100, 1) : 0;
-            $cand['revenue'] = $cand['total_votes'] * $pricePerVote;
+            $cand['revenue'] = (int)$cand['candidate_revenue'];
         }
         unset($cand);
 
@@ -367,8 +367,9 @@ class CampaignController {
                 'message' => 'Campagne créée avec succès.'
             ];
         } catch (Throwable $e) {
+            error_log('[createCampaign] ' . $e->getMessage());
             http_response_code(500);
-            return ['success' => false, 'message' => $e->getMessage()];
+            return ['success' => false, 'message' => 'Une erreur interne est survenue lors de la création.'];
         }
     }
 
@@ -520,6 +521,7 @@ class CampaignController {
         $theme = trim($data['theme'] ?? '');
         $categoryId = !empty($data['category_id']) && $data['category_id'] !== 'new' ? (int)$data['category_id'] : null;
         $newCatName = trim($data['new_category_name'] ?? '');
+        $categoryName = trim($data['category_name'] ?? '');
 
         if ($campaignId <= 0 || empty($name) || $candidateNumber <= 0) {
             http_response_code(400);
@@ -535,9 +537,9 @@ class CampaignController {
 
         try {
             if (!empty($newCatName)) {
-                $stmtNewCat = $this->db->prepare("INSERT INTO Category (name, campaign_id) VALUES (?, ?)");
-                $stmtNewCat->execute([$newCatName, $campaignId]);
-                $categoryId = (int)$this->db->lastInsertId();
+                $categoryId = $this->createCategory($campaignId, $newCatName);
+            } elseif (!empty($categoryName)) {
+                $categoryId = $this->createCategory($campaignId, $categoryName, true);
             }
 
             $imageUrl = null;
@@ -616,14 +618,14 @@ class CampaignController {
         $voteCount = (int)($data['vote_count'] ?? 1);
         $paymentMethod = $data['payment_method'] ?? '';
 
-        if ($campaignId <= 0 || $candidateId <= 0 || $voteCount <= 0 || !in_array($paymentMethod, ['mtn_momo', 'orange_money'], true)) {
+        if ($campaignId <= 0 || $candidateId <= 0 || $voteCount <= 0 || $voteCount > 500 || !in_array($paymentMethod, ['mtn_momo', 'orange_money'], true)) {
             http_response_code(422);
-            return ['success' => false, 'message' => 'Données de vote invalides.'];
+            return ['success' => false, 'message' => 'Données de vote invalides (1 à 500 votes).'];
         }
 
         $stmtCheck = $this->db->prepare("
-            SELECT price_per_vote, is_draft, date_cloture 
-            FROM Campaign 
+            SELECT price_per_vote, is_draft, date_cloture
+            FROM Campaign
             WHERE campaign_id = ?
         ");
         $stmtCheck->execute([$campaignId]);
@@ -634,7 +636,21 @@ class CampaignController {
             return ['success' => false, 'message' => 'Cette campagne n\'est pas active.'];
         }
 
-        $amountFcfa = $voteCount * (int)$camp['price_per_vote'];
+        $stmtCand = $this->db->prepare("SELECT candidate_id FROM Candidate WHERE candidate_id = ? AND campaign_id = ?");
+        $stmtCand->execute([$candidateId, $campaignId]);
+        if (!$stmtCand->fetch()) {
+            http_response_code(422);
+            return ['success' => false, 'message' => 'Candidat introuvable dans cette campagne.'];
+        }
+
+        $price = (int)$camp['price_per_vote'];
+        $discount = match (true) {
+            $voteCount >= 50 => 0.8,
+            $voteCount >= 20 => 0.85,
+            $voteCount >= 10 => 0.9,
+            default => 1.0,
+        };
+        $amountFcfa = (int)round($voteCount * $price * $discount);
         $transactionRef = 'TX-' . strtoupper(uniqid());
 
         $stmt = $this->db->prepare("
@@ -646,8 +662,28 @@ class CampaignController {
         return [
             'success' => true,
             'message' => 'Vote enregistré avec succès.',
-            'transaction_ref' => $transactionRef
+            'transaction_ref' => $transactionRef,
+            'votes_added' => $voteCount,
+            'amount_fcfa' => $amountFcfa,
         ];
+    }
+
+    /**
+     * Crée une catégorie (ou la réutilise si reuse = true et qu'elle existe déjà).
+     */
+    private function createCategory(int $campaignId, string $name, bool $reuse = false): int {
+        if ($reuse) {
+            $stmtFind = $this->db->prepare("SELECT category_id FROM Category WHERE campaign_id = ? AND name = ?");
+            $stmtFind->execute([$campaignId, $name]);
+            $existing = $stmtFind->fetchColumn();
+            if ($existing !== false) {
+                return (int)$existing;
+            }
+        }
+
+        $stmtNew = $this->db->prepare("INSERT INTO Category (name, campaign_id) VALUES (?, ?)");
+        $stmtNew->execute([$name, $campaignId]);
+        return (int)$this->db->lastInsertId();
     }
 
     /**

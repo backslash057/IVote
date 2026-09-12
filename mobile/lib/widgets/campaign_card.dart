@@ -3,8 +3,9 @@ import '../models/campaign.dart';
 
 class CampaignCard extends StatelessWidget {
   final Campaign campaign;
+  final VoidCallback? onTap;
 
-  const CampaignCard({super.key, required this.campaign});
+  const CampaignCard({super.key, required this.campaign, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +126,7 @@ class CampaignCard extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: onTap,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: campaign.isActive
                                 ? const Color(0xFF059669) // emerald-600

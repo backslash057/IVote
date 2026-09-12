@@ -1,63 +1,73 @@
 <?php
 
 class Tokenizer {
-    private static $secretKey = "i7gDGHTKGcXe36UzRiPbuexJvzXC2HFhGU7enz25bIEAK3kd7eT";
+    private static function secret(): string {
+        $secret = getenv('IVOTE_JWT_SECRET');
+        if ($secret === false || $secret === '') {
+            // Fallback de développement uniquement. Définir IVOTE_JWT_SECRET en production.
+            $secret = 'ivote-dev-secret-change-me';
+        }
+        return $secret;
+    }
 
-    // Generate JWT Token
-    public static function generateToken($email) {
+    // Génère un JWT signé HMAC-SHA256
+    public static function generateToken(string $email): string {
         $payload = [
             'createdAt' => time(),
-            'expires' => time() + 60*60*24,
-            'email' => $email
+            'expires' => time() + 60 * 60 * 24,
+            'email' => $email,
         ];
-
         return self::encodeJWT($payload);
     }
 
-    // Decode JWT Token
-    public static function decodeToken($jwt) {
-        list($header, $payload, $signature) = explode('.', $jwt);
-
-        $decodedPayload = json_decode(self::base64UrlDecode($payload), true);
-        return $decodedPayload;
-    }
-
-    // Validate JWT Token
-    public static function validateToken($jwt) {
-        try {
-            $payload = self::decodeToken($jwt);
-            if (isset($payload['exp']) && $payload['exp'] > time()) {
-                return $payload['sub'];
-            }
-            return null;
-        } catch (Exception $e) {
+    // Décode ET vérifie la signature du JWT. Retourne null si invalide.
+    public static function decodeToken(string $jwt): ?array {
+        $parts = explode('.', $jwt);
+        if (count($parts) !== 3) {
             return null;
         }
+        [$headerEncoded, $payloadEncoded, $signatureEncoded] = $parts;
+
+        $expectedSignature = self::base64UrlEncode(
+            hash_hmac('sha256', "$headerEncoded.$payloadEncoded", self::secret(), true)
+        );
+
+        if (!hash_equals($expectedSignature, $signatureEncoded)) {
+            return null;
+        }
+
+        $payload = json_decode(self::base64UrlDecode($payloadEncoded), true);
+        return is_array($payload) ? $payload : null;
     }
 
-    // Encode JWT Structure
-    private static function encodeJWT($payload) {
+    // Vérifie la signature et l'expiration d'un token
+    public static function isValid(string $jwt): bool {
+        $payload = self::decodeToken($jwt);
+        return $payload !== null
+            && isset($payload['expires'], $payload['email'])
+            && (int) $payload['expires'] > time();
+    }
+
+    // Encode une structure JWT
+    private static function encodeJWT(array $payload): string {
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
-        $header = self::base64UrlEncode($header);
+        $headerEncoded = self::base64UrlEncode($header);
 
-        $payload = json_encode($payload);
-        $payload = self::base64UrlEncode($payload);
+        $payloadEncoded = self::base64UrlEncode(json_encode($payload));
 
-        $signature = hash_hmac('sha256', "$header.$payload", self::$secretKey, true);
-        $signature = self::base64UrlEncode($signature);
+        $signature = hash_hmac('sha256', "$headerEncoded.$payloadEncoded", self::secret(), true);
+        $signatureEncoded = self::base64UrlEncode($signature);
 
-        return "$header.$payload.$signature";
+        return "$headerEncoded.$payloadEncoded.$signatureEncoded";
     }
 
-    // Base64 URL Encoding
-    private static function base64UrlEncode($data) {
-        return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
+    // Encodage Base64 URL
+    private static function base64UrlEncode(string $data): string {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 
-    // Base64 URL Decoding
-    private static function base64UrlDecode($data) {
-        return base64_decode(str_replace(['-', '_'], ['+', '/'], $data));
+    // Décodage Base64 URL
+    private static function base64UrlDecode(string $data): string {
+        return base64_decode(strtr($data, '-_', '+/'));
     }
 }
-
-?>

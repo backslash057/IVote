@@ -3,8 +3,9 @@ import '../models/campaign.dart';
 
 class HeroSection extends StatelessWidget {
   final List<Campaign> campaigns;
+  final VoidCallback? onAction;
 
-  const HeroSection({super.key, required this.campaigns});
+  const HeroSection({super.key, required this.campaigns, this.onAction});
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +81,7 @@ class HeroSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF020617).withValues(alpha: 0.5), // bg-slate-950/50
+        color: const Color(0xFF020617).withOpacity(0.5), // bg-slate-950/50
         borderRadius: BorderRadius.circular(16), // rounded-2xl
         border: Border.all(color: const Color(0xFF1E293B)),
       ),
