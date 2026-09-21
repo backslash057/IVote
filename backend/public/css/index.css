@@ -1,0 +1,76 @@
+:root {
+    --primary-blue: #2668fc;
+    --primary-blue-light: #5089fd;
+    --primary-blue-dark: #1550d4;
+    --orange-accent: #f97316;
+    --orange-accent-light: #fb923c;
+    --orange-accent-dark: #ea6c0a;
+    --red-accent: #ef4444;
+    --red-accent-light: #f87171;
+    --red-accent-dark: #dc2626;
+    --forest-green: #2d5016;
+    --forest-green-light: #3d6b1f;
+    --forest-green-dark: #1d3a0e;
+    --green-accent: #22c55e;
+    --green-accent-light: #4ade80;
+    --green-accent-dark: #16a34a;
+    --burgundy: #7a1f3d;
+    --burgundy-light: #9a2850;
+    --burgundy-dark: #5a1530;
+    --golden-yellow: #f4c430;
+    --golden-yellow-light: #f7d45f;
+    --golden-yellow-dark: #d4a520;
+    --navy-blue: #1a2b4a;
+    --navy-blue-light: #2a3f6a;
+    --navy-blue-dark: #0f1a2e;
+    --background: #ffffff;
+    --background-secondary: #f8f9fa;
+    --foreground: #1a1a1a;
+    --foreground-secondary: #4a4a4a;
+    --border: #e0e0e0;
+    --border-light: #f0f0f0;
+    --accent: var(--primary-blue);
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+}
+
+[data-theme="dark"] {
+    --primary-blue: #4d84fd;
+    --primary-blue-light: #729ffe;
+    --primary-blue-dark: #2668fc;
+    --orange-accent: #fb923c;
+    --orange-accent-light: #fdba74;
+    --orange-accent-dark: #f97316;
+    --red-accent: #f87171;
+    --red-accent-light: #fca5a5;
+    --red-accent-dark: #ef4444;
+    --forest-green: #4a8028;
+    --forest-green-light: #5a9538;
+    --forest-green-dark: #3a6518;
+    --green-accent: #4ade80;
+    --green-accent-light: #86efac;
+    --green-accent-dark: #22c55e;
+    --burgundy: #a83558;
+    --burgundy-light: #c84568;
+    --burgundy-dark: #882848;
+    --golden-yellow: #f7d45f;
+    --golden-yellow-light: #fae080;
+    --golden-yellow-dark: #d4a520;
+    --navy-blue: #3a5080;
+    --navy-blue-light: #4a6090;
+    --navy-blue-dark: #2a4070;
+    --background: #0f1419;
+    --background-secondary: #1a1f2e;
+    --foreground: #e8e8e8;
+    --foreground-secondary: #a8a8a8;
+    --border: #2a2f3a;
+    --border-light: #1f242e;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}

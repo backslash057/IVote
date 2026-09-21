@@ -23,7 +23,7 @@ IVote/
 │   ├── controllers/
 │   │   ├── apiController.php        # Couche REST JSON (web/mobile)
 │   │   ├── authController.php       # login / signup / me (JWT)
-│   │   └── campaignController.php   # campagnes, candidats, votes, retraits
+│   │   └── CampaignController.php   # campagnes, candidats, votes, retraits
 │   ├── routes/                      # Pages web PHP (admin)
 │   ├── public/                      # Assets statiques
 │   ├── uploads/                     # Images candidates / campagnes

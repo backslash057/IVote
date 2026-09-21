@@ -1,7 +1,7 @@
 <?php
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/authController.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/campaignController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
 
 $authController = new AuthController();
 $userSession = $authController->checkAuthentification();
@@ -24,7 +24,7 @@ $totalVotesAcrossAll = array_reduce($campaigns, fn($acc, $c) => $acc + ($c['tota
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IVote - Mes Campagnes</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/public/js/tailwindcss.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 

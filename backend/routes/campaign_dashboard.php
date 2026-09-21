@@ -1,6 +1,6 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/authController.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/campaignController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
 
 $authController = new AuthController();
 $currentUser = $authController->checkAuthentification();
@@ -42,7 +42,7 @@ foreach ($candidates as $cand) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau de Bord - <?= htmlspecialchars($campaign['title']) ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/public/js/tailwindcss.js"></script>
 </head>
 <body class="min-h-screen flex flex-col pt-20 font-sans" data-campaign-id="<?= (int)$campaign['campaign_id'] ?>">
     

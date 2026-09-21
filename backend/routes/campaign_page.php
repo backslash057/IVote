@@ -1,6 +1,6 @@
 <?php
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/campaignController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
 
 $campaignIdValue = $_GET['campaign_id'] ?? $_GET['id'] ?? null;
 $campaignId = filter_var($campaignIdValue, FILTER_VALIDATE_INT, [
@@ -25,7 +25,7 @@ $candidateCount = (int) ($campaign['candidateCount'] ?? 0);
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title><?= $campaign ? $escape($campaign['title']) : 'Campagne introuvable' ?> - IVote</title>
-	<script src="https://cdn.tailwindcss.com"></script>
+	<script src="/public/js/tailwindcss.js"></script>
 </head>
 <body class="flex min-h-screen flex-col bg-slate-950 text-slate-100 antialiased" data-campaign-id="<?= (int) ($campaign['campaign_id'] ?? 0) ?>">
 

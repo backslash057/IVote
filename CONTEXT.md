@@ -41,7 +41,7 @@ Deux volets :
 | `backend/router.php` | Routeur : 14 routes `/api/*` + bloc `OPTIONS` CORS (avant résolution de route) |
 | `backend/utils/tokenizer.php` | JWT HS256 : émission + vérification (signature ET expiration) |
 | `backend/controllers/authController.php` | Login / signup / me + extraction `Authorization: Bearer` |
-| `backend/controllers/campaignController.php` | CRUD campagnes, candidats, vote, remises, retraits, dashboard |
+| `backend/controllers/CampaignController.php` | CRUD campagnes, candidats, vote, remises, retraits, dashboard |
 | `backend/controllers/apiController.php` | Couche REST JSON + `respond()` avec en-têtes CORS |
 
 ### 3.2 Routes de l'API mobile (ordre du routeur)
@@ -197,7 +197,7 @@ widgets/
 
 | Vérification | Résultat |
 |---|---|
-| `php -l backend/controllers/campaignController.php` | OK |
+| `php -l backend/controllers/CampaignController.php` | OK |
 | `flutter pub get` | OK (26 deps résolues pour Dart 3.5) |
 | `flutter analyze` | **0 issue** |
 | `flutter test` (smoke test remplacé) | **1 passed** (`test/widget_test.dart`) |

@@ -29,7 +29,7 @@ $userRole = htmlspecialchars($userSession['role'] ?? 'Organisateur', ENT_QUOTES,
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Déconnexion - IVote</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/public/js/tailwindcss.js"></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
     
