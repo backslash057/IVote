@@ -13,6 +13,11 @@ tailwind.config = {
                     'accent-light': 'var(--orange-accent-light)',
                     'accent-dark': 'var(--orange-accent-dark)',
                 },
+                green: {
+                    accent: 'var(--green-accent)',
+                    'accent-light': 'var(--green-accent-light)',
+                    'accent-dark': 'var(--green-accent-dark)',
+                },
                 navy: {
                     DEFAULT: 'var(--navy-blue)',
                     light: 'var(--navy-blue-light)',

@@ -36,9 +36,9 @@ class CampaignController extends BaseController {
     }
 
     /**
-     * GET /api/campaigns/popular
+     * Récupère les campagnes populaires actives directement (Rendu serveur PHP)
      */
-    public function popular(): array {
+    public function getActivePopularCampaigns(int $limit = 4): array {
         $sql = "SELECT c.*,
                        u.name AS organizer_name,
                        COUNT(DISTINCT cand.candidate_id) AS candidate_count,
@@ -53,10 +53,13 @@ class CampaignController extends BaseController {
                 WHERE c.is_draft = 0 AND (c.date_cloture IS NULL OR c.date_cloture >= NOW())
                 GROUP BY c.campaign_id
                 ORDER BY totalVotes DESC
-                LIMIT 3";
+                LIMIT :limit";
 
-        $stmt = $this->db->query($sql);
-        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

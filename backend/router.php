@@ -39,7 +39,6 @@ $urlpatterns = [
     // API: Campaigns
     new Route("/api/campaigns", "CampaignController@index", "GET"),
     new Route("/api/campaigns", "CampaignController@create", "POST"),
-    new Route("/api/campaigns/popular", "CampaignController@popular", "GET"),
     new Route("/api/my-campaigns", "CampaignController@myCampaigns", "GET"),
     new Route("/api/campaigns/{id}", "CampaignController@show", "GET"),
     new Route("/api/campaigns/{id}/dashboard", "CampaignController@dashboard", "GET"),
@@ -124,7 +123,11 @@ foreach ($urlpatterns as $route) {
 if (!$routeFound) {
     $staticFilePath = $_SERVER["DOCUMENT_ROOT"] . $requestUri;
 
-    if ($method === "GET" && str_starts_with($requestUri, "/public/") && is_file($staticFilePath)) {
+    if (
+        $method === "GET" && 
+        (str_starts_with($requestUri, "/public/") || str_starts_with($requestUri, "/uploads/")) &&
+        is_file($staticFilePath)
+    ) {
         $mimeTypes = [
             'css'  => 'text/css',
             'js'   => 'application/javascript',
