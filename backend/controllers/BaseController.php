@@ -48,7 +48,7 @@ abstract class BaseController {
     /**
      * Returns authenticated user info or null
      */
-    protected function getAuthUser(): ?array {
+    public function getAuthUser(): ?array {
         $token = $this->resolveToken();
         if (!$token || !Tokenizer::isValid($token)) {
             return null;

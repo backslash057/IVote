@@ -1,30 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error</title>
-    <style>
-        @font-face {
-            font-family: 'Din round';
-            src: url('fonts/dinroundpro-bold.ttf') format('truetype');
-            font-weight: bold;
-            font-style: normal;
-        }
+    <title>IVote - Page non trouvée (404)</title>
+    
+    <!-- Police : Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS & Config -->
+    <script src="/public/js/tailwindcss/tailwindcss.js"></script>
+    <script src="/public/js/tailwindcss/tailwindcss.config.js"></script>
 
-        body {
-            background-color: #f1f1f1;
-            color: #222;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            font-family: "Din Round", sans-serif;
-        }
-    </style>
+    <link rel="stylesheet" href="/public/css/index.css">
 </head>
-<body>
-    <h2>Error 404</h2>
-    Page not found
+<body class="min-h-screen bg-surface text-fore flex flex-col justify-between items-center px-4 py-8 relative selection:bg-blue-500 selection:text-white font-sans">
+
+    <!-- Bouton Retour Accueil & Theme Toggle en haut -->
+    <header class="w-full max-w-5xl flex items-center justify-between pb-6">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-md">
+                <!-- Lucide: vote / sparkles -->
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">IVote</span>
+                <span class="text-[10px] font-semibold text-fore-secondary tracking-wider">Votes Monétisés</span>
+            </div>
+        </a>
+
+        <!-- Bouton Dark Mode -->
+        <button id="theme-toggle" class="p-2 rounded-xl border border-bordercustom hover:bg-surface-secondary text-fore transition" aria-label="Basculer le mode sombre">
+            <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg id="theme-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </button>
+    </header>
+
+    <main class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+        <div class="max-w-lg w-full text-center space-y-8">
+            
+            <!-- Badge 404 et Illustration -->
+            <div class="relative flex justify-center items-center">
+                <!-- Texte en arrière-plan transparent -->
+                <span class="text-8xl sm:text-9xl font-black text-fore/5 select-none tracking-widest font-mono">
+                    404
+                </span>
+            </div>
+
+            <!-- Messages d'erreur -->
+            <div class="space-y-3">
+                <span class="text-xs font-extrabold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    Erreur 404
+                </span>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-fore tracking-tight">
+                    Page introuvable
+                </h1>
+                <p class="text-xs sm:text-sm text-fore-secondary max-w-sm mx-auto leading-relaxed">
+                    La campagne ou la page que vous recherchez n'existe pas, a été déplacée ou son lien est expiré.
+                </p>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <a href="/" class="w-full sm:w-auto px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    <span>Retour à l'accueil</span>
+                </a>
+                <a href="/campaigns" class="w-full sm:w-auto px-6 py-3 bg-surface-secondary hover:bg-surface border border-bordercustom text-fore font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 text-fore-secondary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <span>Explorer les campagnes</span>
+                </a>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Copyright discret -->
+    <footer class="text-center text-xs text-fore-secondary pt-6">
+        &copy; <?= date('Y') ?> IVote. Tous droits réservés.
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/public/js/theme_toggle.js"></script>
 </body>
 </html>

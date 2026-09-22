@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         errorBox.classList.add('hidden');
         successBox.classList.add('hidden');
-
         errorBox.textContent = '';
         successBox.textContent = '';
 
@@ -25,38 +24,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
 
         try {
-            const response = await fetch('/campaigns/new', {
+            const response = await fetch('/api/campaigns', {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'Accept': 'application/json'
                 }
             });
 
             const result = await response.json();
 
             if (response.ok && result.success && result.campaign_id) {
-                successBox.textContent =
-                    result.message || 'Campagne créée avec succès !';
-
+                successBox.textContent = result.message || 'Campagne créée avec succès ! Redirection...';
                 successBox.classList.remove('hidden');
 
                 setTimeout(() => {
-                    window.location.href =
-                        `/campaigns/${result.campaign_id}/dashboard/`;
+                    window.location.href = `/campaigns/${result.campaign_id}/dashboard`;
                 }, 1000);
             } else {
-                throw new Error(
-                    result.message ||
-                    'Une erreur est survenue lors de la création.'
-                );
+                throw new Error(result.message || 'Une erreur est survenue lors de la création.');
             }
         } catch (error) {
-            errorBox.textContent =
-                error instanceof SyntaxError
-                    ? 'Une erreur est survenue lors de la création.'
-                    : error.message;
-
+            errorBox.textContent = error.message || 'Une erreur de communication est survenue.';
             errorBox.classList.remove('hidden');
         } finally {
             submitBtn.disabled = false;

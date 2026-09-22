@@ -462,7 +462,7 @@ try {
     </div>
 
     <!-- Script : Thème Sombre -->
-    <script src="/public/js/navbar.js"></script>
+    <script src="/public/js/theme_toggle.js"></script>
 
     <!-- Script : Section contact et toast de confirmation -->
     <script>

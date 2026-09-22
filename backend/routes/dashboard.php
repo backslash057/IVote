@@ -1,264 +1,561 @@
-<?php
-
-require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/authController.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
-
-$authController = new AuthController();
-$userSession = $authController->checkAuthentification();
-
-if (!$userSession) {
-    header('Location: /login');
-    exit;
-}
-
-$campaignController = new CampaignController();
-$campaigns = $campaignController->getCampaignsByOrganizer((int) $userSession['user_id']);
-
-// Calcul des métriques globales
-$activeCount = count(array_filter($campaigns, fn($c) => ($c['status'] ?? '') === 'active'));
-$totalVotesAcrossAll = array_reduce($campaigns, fn($acc, $c) => $acc + ($c['totalVotes'] ?? 0), 0);
-?>
 <!DOCTYPE html>
-<html lang="fr" class="h-full">
+<html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IVote - Mes Campagnes</title>
-    <script src="/public/js/tailwindcss.js"></script>
+    <title>IVote - Mes Campagnes (Espace Organisateur)</title>
+    
+    <!-- Police : Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS & Config -->
+    <script src="/public/js/tailwindcss/tailwindcss.js"></script>
+    <script src="/public/js/tailwindcss/tailwindcss.config.js"></script>
+
+    <link rel="stylesheet" href="/public/css/index.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="antialiased selection:bg-blue-500 selection:text-white flex flex-col min-h-screen bg-surface">
 
-    <!-- Fixed Header / Navigation -->
-    <header class="fixed top-0 inset-x-0 z-50 h-16 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
-        <div class="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <a href="/" class="flex items-center gap-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition-transform hover:scale-105">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                </div>
-                <div>
-                    <span class="block text-base font-bold tracking-tight text-white">IVote</span>
-                    <span class="hidden text-[10px] text-slate-400 sm:block">Vote & Paiement Mobile Money</span>
-                </div>
-            </a>
-
-            <div class="flex items-center gap-2">
-                <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-full bg-slate-900 border border-slate-800/80 text-xs shadow-inner">
-                    <div class="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-[10px]">
-                        <?= strtoupper(substr($userSession['name'] ?? 'U', 0, 2)) ?>
+    <!-- Navbar -->
+    <header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-bordercustom transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <!-- Logo -->
+                <a href="/" class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-md">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                        </svg>
                     </div>
-                    <span class="font-semibold text-slate-200"><?= htmlspecialchars($userSession['name'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+                    <div class="flex flex-col">
+                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">IVote</span>
+                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider">Votes Monétisés</span>
+                    </div>
+                </a>
+
+                <!-- Navigation Links -->
+                <nav class="hidden md:flex items-center gap-8">
+                    <a href="/" class="text-sm font-medium text-fore-secondary hover:text-fore transition">Accueil</a>
+                    <a href="/campaigns" class="text-sm font-medium text-fore-secondary hover:text-fore transition">Explorer les campagnes</a>
+                    <a href="/dashboard" class="text-sm font-semibold text-primary">Espace organisateur</a>
+                </nav>
+
+                <!-- User Session & Theme Controls -->
+                <div class="hidden md:flex items-center gap-3">
+                    <!-- Bouton Dark Mode -->
+                    <button id="theme-toggle" class="p-2.5 rounded-xl border border-bordercustom hover:bg-surface-secondary text-fore transition" aria-label="Basculer le mode sombre">
+                        <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg id="theme-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Profil & Déconnexion -->
+                    <div id="user-badge" class="flex items-center gap-2 pl-2 border-l border-bordercustom">
+                        <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface-secondary border border-bordercustom text-xs">
+                            <div id="user-avatar" class="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">
+                                --
+                            </div>
+                            <span id="user-name" class="font-semibold text-fore">Chargement...</span>
+                        </div>
+
+                        <a href="/logout" title="Se déconnecter" class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-surface-secondary border border-bordercustom text-fore-secondary hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition cursor-pointer">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" x2="9" y1="12" y2="12"/>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
 
-                <a href="/logout" title="Se déconnecter" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all cursor-pointer">
-                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" x2="9" y1="12" y2="12"/>
-                    </svg>
-                </a>
+                <!-- Mobile Drawer & Theme Buttons -->
+                <div class="flex items-center gap-2 md:hidden">
+                    <button id="mobile-theme-toggle" class="p-2 text-fore-secondary hover:text-fore">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                    <button id="mobile-menu-btn" class="p-2 text-fore-secondary hover:text-fore">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer -->
+        <div id="mobile-menu" class="hidden md:hidden bg-surface border-b border-bordercustom px-4 pt-2 pb-6 space-y-3">
+            <a href="/" class="block py-2 text-sm font-medium text-fore-secondary">Accueil</a>
+            <a href="/campaigns" class="block py-2 text-sm font-medium text-fore-secondary">Explorer les campagnes</a>
+            <a href="/dashboard" class="block py-2 text-sm font-semibold text-primary">Espace organisateur</a>
+            <div class="pt-3 border-t border-bordercustom flex items-center justify-between">
+                <span id="mobile-user-name" class="text-xs font-semibold text-fore">Organisateur</span>
+                <a href="/logout" class="text-xs font-bold text-red-500 hover:underline">Déconnexion</a>
+            </div>
+            <div class="pt-2">
+                <a href="/campaigns/new" class="block w-full text-center py-2.5 font-semibold bg-primary text-white rounded-xl text-xs">Créer une campagne</a>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Wrapper -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 space-y-8">
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         
-        <!-- Hero & Métriques -->
-        <section class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div class="space-y-3">
-                <h1 class="text-2xl sm:text-4xl font-extrabold text-white">Gestion de vos Campagnes</h1>
-                <p class="text-xs sm:text-sm text-slate-400 max-w-xl">
-                    Supervisez vos scrutins en temps réel, lancez de nouveaux votes monétisés et suivez la collecte par Mobile Money.
+        <!-- Hero Header & Stats Banner -->
+        <section class="bg-surface-secondary rounded-3xl p-6 sm:p-10 border border-bordercustom shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+            <div class="space-y-4 max-w-2xl">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-fore tracking-tight">
+                    Gestion de vos Campagnes
+                </h1>
+                <p class="text-xs sm:text-sm text-fore-secondary leading-relaxed">
+                    Supervisez vos scrutins en temps réel, lancez de nouveaux votes monétisés et suivez la collecte par Mobile Money en toute simplicité.
                 </p>
-                <a href="/campaigns/new" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Nouvelle Campagne
-                </a>
+                <div>
+                    <a href="/campaigns/new" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-md transition transform hover:-translate-y-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span>Nouvelle Campagne</span>
+                    </a>
+                </div>
             </div>
 
-            <!-- Stats Aggregates (Conditionnel si non vide) -->
-            <?php if (!empty($campaigns)): ?>
-                <div class="grid grid-cols-3 gap-3 shrink-0 w-full md:w-auto">
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 text-center">
-                        <span class="text-xl font-black text-emerald-400 font-mono block"><?= $activeCount ?></span>
-                        <span class="text-[11px] text-slate-400">Actives</span>
-                    </div>
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 text-center">
-                        <span class="text-xl font-black text-amber-400 font-mono block"><?= count($campaigns) ?></span>
-                        <span class="text-[11px] text-slate-400">Total Créées</span>
-                    </div>
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 text-center">
-                        <span class="text-xl font-black text-white font-mono block"><?= number_format($totalVotesAcrossAll) ?></span>
-                        <span class="text-[11px] text-slate-400">Total Votes</span>
-                    </div>
+            <!-- Aggregate Metric Counters -->
+            <div id="stats-wrapper" class="grid grid-cols-3 gap-3 w-full lg:w-auto">
+                <div class="bg-surface border border-bordercustom rounded-2xl p-4 text-center shadow-sm">
+                    <span id="stat-active" class="text-xl sm:text-2xl font-extrabold text-green-600 block">--</span>
+                    <span class="text-[11px] font-semibold text-fore-secondary uppercase tracking-wider">Actives</span>
                 </div>
-            <?php endif; ?>
+                <div class="bg-surface border border-bordercustom rounded-2xl p-4 text-center shadow-sm">
+                    <span id="stat-total" class="text-xl sm:text-2xl font-extrabold text-primary block">--</span>
+                    <span class="text-[11px] font-semibold text-fore-secondary uppercase tracking-wider">Créées</span>
+                </div>
+                <div class="bg-surface border border-bordercustom rounded-2xl p-4 text-center shadow-sm">
+                    <span id="stat-votes" class="text-xl sm:text-2xl font-extrabold text-fore block">--</span>
+                    <span class="text-[11px] font-semibold text-fore-secondary uppercase tracking-wider">Votes Reçus</span>
+                </div>
+            </div>
         </section>
 
-        <!-- Affichage des campagnes ou cas vide -->
-        <?php if (empty($campaigns)): ?>
-            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl py-16 px-6 text-center max-w-md mx-auto flex flex-col items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-slate-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 013 10c0-2.21 1.791-4 4-4 1.202 0 2.281.531 3 1.373M19 19l-4-4m0 0l-4-4m4 4l4-4m-4 4l-4 4" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-200">Aucune campagne créée</h3>
-                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                        Vous n'avez pas encore configuré de campagne de vote dans votre espace organisateur. Lancez votre premier scrutin en quelques clics pour commencer.
-                    </p>
-                </div>
-                <a href="/campaigns/new" class="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Créer ma première campagne
-                </a>
-            </div>
-        <?php else: ?>
-            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php foreach ($campaigns as $camp): ?>
-                    <?php 
-                        $isActive = ($camp['status'] ?? '') === 'active';
-                        $campaignId = $camp['campaign_id'];
-                        $imageUrl = $camp['image_url'] ?? 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1400';
-                        $organization = $camp['organizer_name'] ?? 'Comité Organisateur';
-                        $description = $camp['description'] ?? 'Participez à cette campagne de vote.';
-                        $candidateCount = (int) ($camp['candidate_count'] ?? 0);
-                    ?>
-                    <article class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-3xl overflow-hidden flex flex-col justify-between shadow-lg transition-all">
-                        
-                        <!-- Bannière & Badges -->
-                        <div class="relative h-48 w-full bg-slate-950">
-                            <img src="<?= htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') ?>" 
-                                 alt="<?= htmlspecialchars($camp['title'], ENT_QUOTES, 'UTF-8') ?>" 
-                                 class="w-full h-full object-cover opacity-85">
-                            
-                            <div class="absolute top-3 inset-x-3 flex items-center justify-between">
-                                <?php if ($isActive): ?>
-                                    <span class="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-md flex items-center gap-1.5">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> En Direct
-                                    </span>
-                                <?php else: ?>
-                                    <span class="px-2.5 py-1 rounded-full bg-slate-700 text-slate-200 text-[11px] font-semibold">
-                                        Terminé
-                                    </span>
-                                <?php endif; ?>
-
+        <!-- Dynamic Content Section -->
+        <section id="campaigns-container">
+            <!-- Skeleton Loading State -->
+            <div id="loading-state" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-28">
+                <!-- Skeleton Card 1 -->
+                <div class="bg-surface rounded-2xl border border-bordercustom overflow-hidden shadow-sm flex flex-col justify-between animate-pulse">
+                    <div>
+                        <div class="relative h-48 bg-slate-200 dark:bg-slate-800/80 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-slate-300 dark:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <div class="absolute top-3 right-3 h-5 w-20 bg-slate-300 dark:bg-slate-700 rounded-md"></div>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
+                            <div class="h-5 bg-slate-300 dark:bg-slate-700 rounded-md w-3/4"></div>
+                            <div class="space-y-1.5 pt-1">
+                                <div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+                                <div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-4/5"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="p-5 pt-0 space-y-3">
+                        <div class="flex items-center justify-between border-t border-bordercustom pt-3">
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-16"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="h-9 bg-slate-300 dark:bg-slate-700 rounded-xl"></div>
+                            <div class="h-9 bg-slate-300 dark:bg-slate-700 rounded-xl"></div>
+                        </div>
+                    </div>
+                </div>
 
-                        <!-- Contenu -->
-                        <div class="p-5 flex-1 flex flex-col justify-between gap-4">
-                            <div class="space-y-1.5">
-                                <span class="text-xs text-emerald-400 block"><?= htmlspecialchars($organization, ENT_QUOTES, 'UTF-8') ?></span>
-                                <h2 class="text-lg font-bold text-white line-clamp-1"><?= htmlspecialchars($camp['title'], ENT_QUOTES, 'UTF-8') ?></h2>
-                                <p class="text-xs text-slate-400 line-clamp-2"><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p>
+                <!-- Skeleton Card 2 -->
+                <div class="bg-surface rounded-2xl border border-bordercustom overflow-hidden shadow-sm flex flex-col justify-between animate-pulse hidden sm:flex">
+                    <div>
+                        <div class="relative h-48 bg-slate-200 dark:bg-slate-800/80 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-slate-300 dark:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <div class="absolute top-3 right-3 h-5 w-20 bg-slate-300 dark:bg-slate-700 rounded-md"></div>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
+                            <div class="h-5 bg-slate-300 dark:bg-slate-700 rounded-md w-3/4"></div>
+                            <div class="space-y-1.5 pt-1">
+                                <div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+                                <div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-4/5"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-5 pt-0 space-y-3">
+                        <div class="flex items-center justify-between border-t border-bordercustom pt-3">
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-16"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="h-9 bg-slate-300 dark:bg-slate-700 rounded-xl"></div>
+                            <div class="h-9 bg-slate-300 dark:bg-slate-700 rounded-xl"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skeleton Card 3 -->
+                <div class="bg-surface rounded-2xl border border-bordercustom overflow-hidden shadow-sm flex flex-col justify-between animate-pulse hidden lg:flex">
+                    <div>
+                        <div class="relative h-48 bg-slate-200 dark:bg-slate-800/80 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-slate-300 dark:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <div class="absolute top-3 right-3 h-5 w-20 bg-slate-300 dark:bg-slate-700 rounded-md"></div>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
+                            <div class="h-5 bg-slate-300 dark:bg-slate-700 rounded-md w-3/4"></div>
+                            <div class="space-y-1.5 pt-1">
+                                <div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+                                <div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-4/5"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-5 pt-0 space-y-3">
+                        <div class="flex items-center justify-between border-t border-bordercustom pt-3">
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
+                            <div class="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-16"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="h-9 bg-slate-300 dark:bg-slate-700 rounded-xl"></div>
+                            <div class="h-9 bg-slate-300 dark:bg-slate-700 rounded-xl"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error State (Hidden by default) -->
+            <div id="error-state" class="hidden bg-surface-secondary border border-bordercustom rounded-3xl p-10 text-center max-w-lg mx-auto my-28 space-y-4">
+                <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h3 class="text-base font-bold text-fore">Impossible de charger vos campagnes</h3>
+                <p id="error-message" class="text-xs text-fore-secondary">Une erreur est survenue lors de la synchronisation avec le serveur.</p>
+                <button onclick="loadMyCampaigns()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded-xl transition shadow">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span>Réessayer</span>
+                </button>
+            </div>
+
+            <!-- Empty State (Hidden by default) -->
+            <div id="empty-state" class="hidden bg-surface-secondary border border-bordercustom rounded-3xl p-12 text-center max-w-md mx-auto my-28 space-y-4">
+                <div class="w-14 h-14 rounded-2xl bg-surface border border-bordercustom text-fore-secondary flex items-center justify-center mx-auto shadow-sm">
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11.636 6A13 13 0 0 0 19.4 3.2 1 1 0 0 1 21 4v11.344"/>
+                        <path d="M14.378 14.357A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1"/>
+                        <path d="m2 2 20 20"/><path d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14"/>
+                        <path d="M8 8v6"/>
+                    </svg>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-base font-bold text-fore">Aucune campagne créée</h3>
+                    <p class="text-xs text-fore-secondary leading-relaxed">
+                        Vous n'avez pas encore configuré de scrutin de vote. Créez et personnalisez votre première campagne en quelques clics.
+                    </p>
+                </div>
+                <a href="/campaigns/new" class="inline-flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded-xl transition shadow">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span>Créer ma première campagne</span>
+                </a>
+            </div>
+
+            <!-- Campaign Cards Grid (Filled dynamically) -->
+            <div id="campaigns-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-bordercustom bg-surface-secondary pt-12 pb-8 text-fore-secondary">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
+                
+                <div class="space-y-4 md:col-span-1">
+                    <div class="font-display flex items-center gap-2 text-xl font-bold text-fore">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                        </span>
+                        IVote
+                    </div>
+                    <p class="text-xs leading-relaxed text-fore-secondary">
+                        La plateforme moderne pour vos concours, élections et votes en ligne sécurisés et en temps réel.
+                    </p>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-fore">Navigation</h3>
+                    <ul class="mt-4 space-y-2 text-xs">
+                        <li><a href="/" class="transition-colors hover:text-primary">Accueil</a></li>
+                        <li><a href="/campaigns" class="transition-colors hover:text-primary">Explorer les campagnes</a></li>
+                        <li><a href="/dashboard" class="transition-colors hover:text-primary">Espace organisateur</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-fore">Légal</h3>
+                    <ul class="mt-4 space-y-2 text-xs">
+                        <li><a href="#" class="transition-colors hover:text-primary">Conditions d'utilisation</a></li>
+                        <li><a href="#" class="transition-colors hover:text-primary">Politique de confidentialité</a></li>
+                        <li><a href="#" class="transition-colors hover:text-primary">Mentions légales</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-fore">Support</h3>
+                    <ul class="mt-4 space-y-2 text-xs">
+                        <li><a href="mailto:support@ivote.com" class="text-primary hover:underline">support@ivote.com</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-bordercustom pt-6 text-xs text-fore-secondary sm:flex-row">
+                <p>&copy; <?= date('Y') ?> IVote. Tous droits réservés.</p>
+                <p>Votez en toute sécurité.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/public/js/theme_toggle.js"></script>
+    <script>
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        async function checkAuthAndLoadUser() {
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return false;
+                }
+
+                const result = await response.json();
+                if (result.success && result.user) {
+                    const name = result.user.name || 'Organisateur';
+                    document.getElementById('user-name').textContent = name;
+                    const mobileName = document.getElementById('mobile-user-name');
+                    if (mobileName) mobileName.textContent = name;
+
+                    const initials = name.trim().split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                    document.getElementById('user-avatar').textContent = initials || 'OR';
+                    return true;
+                } else {
+                    window.location.href = '/login';
+                    return false;
+                }
+            } catch (err) {
+                console.error("Erreur lors de la vérification d'authentification:", err);
+                return true; // Continue pour afficher l'erreur de chargement
+            }
+        }
+
+        async function loadMyCampaigns() {
+            const isAuthed = await checkAuthAndLoadUser();
+            if (!isAuthed) return;
+
+            const loadingEl = document.getElementById('loading-state');
+            const errorEl = document.getElementById('error-state');
+            const emptyEl = document.getElementById('empty-state');
+            const gridEl = document.getElementById('campaigns-grid');
+            const errorMsg = document.getElementById('error-message');
+
+            // Reset states
+            loadingEl.classList.remove('hidden');
+            errorEl.classList.add('hidden');
+            emptyEl.classList.add('hidden');
+            gridEl.classList.add('hidden');
+            gridEl.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/my-campaigns', {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const campaigns = result.data || [];
+
+                loadingEl.classList.add('hidden');
+
+                if (campaigns.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    document.getElementById('stat-active').textContent = '0';
+                    document.getElementById('stat-total').textContent = '0';
+                    document.getElementById('stat-votes').textContent = '0';
+                    return;
+                }
+
+                // Update aggregate stats
+                let activeCount = 0;
+                let totalVotesAcrossAll = 0;
+
+                campaigns.forEach(c => {
+                    if (c.status === 'active') activeCount++;
+                    totalVotesAcrossAll += parseInt(c.totalVotes || 0, 10);
+                });
+
+                document.getElementById('stat-active').textContent = activeCount;
+                document.getElementById('stat-total').textContent = campaigns.length;
+                document.getElementById('stat-votes').textContent = new Intl.NumberFormat('fr-FR').format(totalVotesAcrossAll);
+
+                // Build cards
+                campaigns.forEach(campaign => {
+                    const status = campaign.status || 'draft';
+                    const isActive = status === 'active';
+                    const isDraft = status === 'draft';
+                    const title = escapeHtml(campaign.title || 'Campagne sans titre');
+                    const organizer = escapeHtml(campaign.organizer_name || 'Comité Organisateur');
+                    const description = escapeHtml(campaign.description || 'Participez à cette campagne de vote.');
+                    const candidateCount = parseInt(campaign.candidate_count || 0, 10);
+                    const totalVotes = parseInt(campaign.totalVotes || 0, 10);
+                    const campaignId = parseInt(campaign.campaign_id, 10);
+                    const imageUrl = campaign.image_url ? escapeHtml(campaign.image_url) : null;
+
+                    // Image or Local Placeholder
+                    const imageHtml = imageUrl 
+                        ? `<img src="${imageUrl}" alt="${title}" class="w-full h-full object-cover">`
+                        : `<div class="flex flex-col items-center justify-center text-fore-secondary p-4 text-center">
+                                <svg class="w-10 h-10 mb-1 opacity-40 text-fore" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span class="text-[11px] font-medium opacity-60">Aucune image</span>
+                           </div>`;
+
+                    // Status Badge
+                    let badgeHtml = '';
+                    if (isActive) {
+                        badgeHtml = `<span class="bg-surface/90 backdrop-blur-md text-fore text-[10px] font-bold px-2.5 py-1 rounded-md border border-bordercustom shadow-sm flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                        <span>En direct</span>
+                                     </span>`;
+                    } else if (isDraft) {
+                        badgeHtml = `<span class="bg-surface/90 backdrop-blur-md text-amber-500 text-[10px] font-bold px-2.5 py-1 rounded-md border border-bordercustom shadow-sm flex items-center gap-1">
+                                        <span>📝 Brouillon</span>
+                                     </span>`;
+                    } else {
+                        badgeHtml = `<span class="bg-surface/90 backdrop-blur-md text-fore-secondary text-[10px] font-bold px-2.5 py-1 rounded-md border border-bordercustom shadow-sm">
+                                        Terminé
+                                     </span>`;
+                    }
+
+                    const cardHtml = `
+                        <article class="bg-surface rounded-2xl border border-bordercustom overflow-hidden shadow-sm flex flex-col justify-between hover:border-primary/50 transition">
+                            <div>
+                                <div class="relative h-48 bg-surface-secondary flex items-center justify-center overflow-hidden">
+                                    ${imageHtml}
+                                    <div class="absolute top-3 right-3">
+                                        ${badgeHtml}
+                                    </div>
+                                </div>
+                                <div class="p-5 space-y-1.5">
+                                    <span class="text-xs text-primary font-semibold block">${organizer}</span>
+                                    <h2 class="text-base font-bold text-fore leading-snug line-clamp-1" title="${title}">${title}</h2>
+                                    <p class="text-xs text-fore-secondary line-clamp-2 leading-relaxed">${description}</p>
+                                </div>
                             </div>
 
-                            <div class="pt-3 border-t border-slate-800/80 space-y-3 mt-auto">
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-slate-300 font-medium flex items-center gap-1.5">
-                                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="p-5 pt-0 space-y-3">
+                                <div class="flex items-center justify-between text-xs font-semibold text-fore-secondary border-t border-bordercustom pt-3">
+                                    <span class="flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-fore-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                         </svg>
-                                        <?= $candidateCount ?> candidat<?= $candidateCount > 1 ? 's' : '' ?>
+                                        ${candidateCount} candidat${candidateCount > 1 ? 's' : ''}
                                     </span>
-
-                                    <span class="text-slate-300 font-mono font-semibold flex items-center gap-1.5">
-                                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    <span class="font-bold text-fore flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
                                         </svg>
-                                        <?= number_format($camp['totalVotes'] ?? 0) ?> votes
+                                        ${new Intl.NumberFormat('fr-FR').format(totalVotes)} votes
                                     </span>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2">
-                                    <a href="/campaigns/<?= $campaignId ?>/dashboard" 
-                                       class="inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-emerald-600 hover:bg-emerald-500 text-white">
-                                        Tableau de bord
-                                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <a href="/campaigns/${campaignId}/dashboard" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-primary hover:bg-primary-dark text-white shadow">
+                                        <span>Gérer</span>
+                                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M5 12h14"/>
                                             <path d="m12 5 7 7-7 7"/>
                                         </svg>
                                     </a>
-                                    <a href="/campaigns/<?= $campaignId ?>" target="_blank" class="inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
-                                        Page Publique
-                                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <a href="/campaigns/${campaignId}" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-surface-secondary hover:bg-surface border border-bordercustom text-fore">
+                                        <span>Page Publique</span>
+                                        <svg class="w-3.5 h-3.5 text-fore-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M15 3h6v6"/><path d="M10 14 21 3"/>
                                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                                         </svg>
                                     </a>
                                 </div>
                             </div>
-                        </div>
+                        </article>
+                    `;
 
-                    </article>
-                <?php endforeach; ?>
-            </section>
-        <?php endif; ?>
+                    gridEl.insertAdjacentHTML('beforeend', cardHtml);
+                });
 
-    </main>
+                gridEl.classList.remove('hidden');
 
-    <!-- Footer Sticky -->
-    <footer class="border-t border-slate-800 bg-slate-900/60 pt-10 pb-8 text-slate-400 mt-auto">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
-                
-                <!-- Marque & Description -->
-                <div class="space-y-3">
-                    <div class="flex items-center gap-2 text-xl font-bold text-white">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </span>
-                        IVote
-                    </div>
-                    <p class="text-xs leading-relaxed text-slate-400">
-                        La plateforme moderne pour vos concours, élections et votes en ligne sécurisés et en temps réel.
-                    </p>
-                </div>
+            } catch (err) {
+                console.error("Erreur lors de la récupération des campagnes organisateur:", err);
+                loadingEl.classList.add('hidden');
+                errorMsg.textContent = err.message || "Erreur de communication avec l'API.";
+                errorEl.classList.remove('hidden');
+            }
+        }
 
-                <!-- Navigation -->
-                <div>
-                    <h3 class="text-xs font-semibold uppercase tracking-wider text-white">Navigation</h3>
-                    <ul class="mt-3 space-y-2 text-xs">
-                        <li><a href="/" class="transition-colors hover:text-emerald-400">Accueil</a></li>
-                        <li><a href="/campaigns" class="transition-colors hover:text-emerald-400">Explorer les campagnes</a></li>
-                        <li><a href="/login" class="transition-colors hover:text-emerald-400">Espace organisateur</a></li>
-                    </ul>
-                </div>
-
-                <!-- Liens Légaux -->
-                <div>
-                    <h3 class="text-xs font-semibold uppercase tracking-wider text-white">Légal</h3>
-                    <ul class="mt-3 space-y-2 text-xs">
-                        <li><a href="#" class="transition-colors hover:text-emerald-400">Conditions d'utilisation</a></li>
-                        <li><a href="#" class="transition-colors hover:text-emerald-400">Politique de confidentialité</a></li>
-                        <li><a href="#" class="transition-colors hover:text-emerald-400">Mentions légales</a></li>
-                    </ul>
-                </div>
-
-                <!-- Support -->
-                <div>
-                    <h3 class="text-xs font-semibold uppercase tracking-wider text-white">Support</h3>
-                    <ul class="mt-3 space-y-2 text-xs">
-                        <li><a href="mailto:support@ivote.com" class="text-emerald-400 hover:underline">support@ivote.com</a></li>
-                    </ul>
-                </div>
-
-            </div>
-
-            <!-- Bas de page -->
-            <div class="mt-8 flex flex-col items-center justify-between gap-4 border-t border-slate-800/80 pt-6 text-xs text-slate-500 sm:flex-row">
-                <p>&copy; <?= date('Y') ?> IVote. Tous droits réservés.</p>
-                <p>Votez en toute sécurité.</p>
-            </div>
-        </div>
-    </footer>
+        // Initialisation automatique au chargement
+        document.addEventListener('DOMContentLoaded', loadMyCampaigns);
+    </script>
 </body>
 </html>

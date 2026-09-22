@@ -2,8 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.querySelector("form");
     const errorFrame = document.querySelector(".error_frame");
 
-    console.log(form);
-
     if (!form || !errorFrame) return;
 
     function display_result(message, positive) {

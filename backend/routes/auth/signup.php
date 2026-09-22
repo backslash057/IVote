@@ -1,114 +1,171 @@
 <?php
 
-require_once $_SERVER["DOCUMENT_ROOT"] . "/controllers/authController.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/controllers/AuthController.php";
 
-// Try, load and verify the user data from cookies
-$controller = new Authcontroller();
-$userData = $controller->checkAuthentification();
+try {
+    $controller = new AuthController();
+    $userData = $controller->getAuthUser();
 
-if ($userData) {
-    header("Location: /logout");
-    exit;
+    if ($userData) {
+        header("Location: /dashboard");
+        exit;
+    }
+} catch (Exception $e) {
+    error_log("[AuthController] /signup: Error verifying authentication");
 }
 
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inscription - IVote</title>
-    <script src="/public/js/tailwindcss.js"></script>
-    <!-- <script src="/public/js/debug.js"></script> -->
+    <title>Inscription Organisateur - IVote</title>
+    
+    <!-- Police : Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS & Config -->
+    <script src="/public/js/tailwindcss/tailwindcss.js"></script>
+    <script src="/public/js/tailwindcss/tailwindcss.config.js"></script>
+
+    <link rel="stylesheet" href="/public/css/index.css">
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
+<body class="min-h-screen bg-surface text-fore flex flex-col justify-between items-center px-4 py-8 relative selection:bg-blue-500 selection:text-white font-sans">
 
-    <!-- Boules en arriere plan -->
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-    <div class="absolute bottom-0 right-10 w-[500px] h-[300px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- Bouton Retour Accueil & Theme Toggle en haut -->
+    <header class="w-full max-w-5xl flex items-center justify-between pb-6">
+        <a href="/" class="flex items-center gap-2 text-xs font-semibold text-fore-secondary hover:text-fore transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            <span>Retour à l'accueil</span>
+        </a>
 
-    <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative z-10">
-        
-        <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/>
-                </svg>
+        <!-- Bouton Dark Mode -->
+        <button id="theme-toggle" class="p-2 rounded-xl border border-bordercustom hover:bg-surface-secondary text-fore transition" aria-label="Basculer le mode sombre">
+            <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg id="theme-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Carte Principale d'Inscription -->
+    <main class="w-full max-w-md my-auto">
+        <div class="bg-surface-secondary border border-bordercustom rounded-3xl p-6 sm:p-8 shadow-xl relative backdrop-blur-md space-y-6">
+            
+            <!-- En-tête de la carte -->
+            <div class="text-center space-y-3">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white shadow-md mx-auto">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                    </svg>
+                </div>
+                
+                <div>
+                    <h1 class="text-2xl font-extrabold text-fore tracking-tight">
+                        Créer un Compte
+                    </h1>
+                    <p class="text-xs text-fore-secondary mt-1">
+                        Lancez vos campagnes de vote et recevez vos paiements
+                    </p>
+                </div>
             </div>
-            <h1 class="text-2xl font-bold text-white tracking-tight">
-                Espace Organisateur <span class="text-emerald-400">IVote</span>
-            </h1>
-            <p class="text-xs text-slate-400 mt-1">
-                Plateforme sécurisée de gestion des votes monétisés
-            </p>
+
+            <!-- Formulaire -->
+            <form id="signup-form" action="/api/auth/signup" method="POST" class="space-y-4">
+                <!-- Zone d'affichage des messages d'erreur dynamique -->
+                <div class="error_frame hidden p-3 rounded-xl text-xs text-center font-medium bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-fore mb-1.5">
+                        Nom complet ou Organisation
+                    </label>
+                    <div class="relative">
+                        <svg class="w-4 h-4 text-fore-secondary absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <input type="text" 
+                               required 
+                               name="name" 
+                               placeholder="Ex: Empire Prod / Pr. Marcelle" 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-bordercustom text-xs text-fore placeholder:text-fore-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-fore mb-1.5">
+                        Adresse e-mail
+                    </label>
+                    <div class="relative">
+                        <svg class="w-4 h-4 text-fore-secondary absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        </svg>
+                        <input type="email" 
+                               required 
+                               name="email" 
+                               placeholder="contact@organisation.com" 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-bordercustom text-xs text-fore placeholder:text-fore-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-fore mb-1.5">
+                        Mot de passe
+                    </label>
+                    <div class="relative">
+                        <svg class="w-4 h-4 text-fore-secondary absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <input type="password" 
+                               required 
+                               name="password" 
+                               placeholder="••••••••••••" 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-bordercustom text-xs text-fore placeholder:text-fore-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
+                    </div>
+                </div>
+
+                <button type="submit" 
+                        class="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold text-xs rounded-xl shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span>Créer mon Espace Organisateur</span>
+                </button>
+            </form>
+
+            <!-- Pied de la carte -->
+            <div class="pt-4 border-t border-bordercustom text-center text-xs text-fore-secondary">
+                <span>Déjà un compte ?</span>
+                <a href="/login" class="text-primary font-bold hover:underline ml-1">
+                    Se connecter
+                </a>
+            </div>
+
         </div>
+    </main>
 
-        <!-- Dynamic Error / Success Message Box -->
-        <div class="error_frame hidden mb-4 p-3 rounded-xl text-xs text-center"></div>
+    <!-- Copyright -->
+    <footer class="text-center text-xs text-fore-secondary pt-6">
+        &copy; <?= date('Y') ?> IVote. Tous droits réservés.
+    </footer>
 
-        <form action="" method="POST" class="space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">
-                    Nom
-                </label>
-                <div class="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    <input type="text" required name="name" placeholder="Ex: Pr. Marcelle Ebongue" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
-                </div>
-            </div>
-
-            <!-- <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">
-                    Numéro de Téléphone
-                </label>
-                <div class="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>
-                    </svg>
-                    <input type="text" required name="phone" placeholder="+237 6XX XX XX XX" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
-                </div>
-            </div> -->
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">
-                    Adresse Email
-                </label>
-                <div class="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/>
-                    </svg>
-                    <input type="email" required name="email" placeholder="contact@uy1-events.cm" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">
-                    Mot de passe
-                </label>
-                <div class="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    <input type="password" required name="password" placeholder="••••••••••••" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
-                </div>
-            </div>
-
-            <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-                Créer mon Espace Organisateur
-            </button>
-        </form>
-
-        <div class="w-full flex justify-end gap-2 mt-4 text-xs text-slate-400">
-            Déja un compte? 
-            <a href="/login" class="text-emerald-400 hover:underline">Se connecter</a>
-        </div>
-    </div>
-
+    <!-- Scripts -->
+    <script src="/public/js/theme_toggle.js"></script>
     <script src="/public/js/auth.js" defer></script>
 </body>
 </html>
