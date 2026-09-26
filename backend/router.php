@@ -29,12 +29,14 @@ $urlpatterns = [
 
     // API: System & Health
     new Route("/api/status", "CampaignController@status", "GET"),
-
-    // API: Authentication
+    
+    // API: Authentication & User data
     new Route("/api/auth/login", "AuthController@login", "POST"),
     new Route("/api/auth/signup", "AuthController@signup", "POST"),
     new Route("/api/auth/logout", "AuthController@logout", "POST"),
     new Route("/api/auth/me", "AuthController@me", "GET"),
+    new Route("/api/auth/profile", "AuthController@updateProfile", "POST"),
+    new Route("/api/auth/stats", "AuthController@stats", "GET"),
 
     // API: Campaigns
     new Route("/api/campaigns", "CampaignController@index", "GET"),
@@ -62,6 +64,7 @@ $urlpatterns = [
     // API: Payouts
     new Route("/api/campaigns/{id}/payouts", "PayoutController@index", "GET"),
     new Route("/api/campaigns/{id}/payouts", "PayoutController@store", "POST"),
+    new Route("/api/organizer/revenues", "PayoutController@organizerRevenues", "GET"),
 ];
 
 $requestUri = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';

@@ -77,4 +77,74 @@ class PayoutController extends BaseController {
         http_response_code(201);
         return ['success' => true, 'message' => 'Demande de retrait initiée avec succès.'];
     }
+
+    /**
+     * GET /api/organizer/revenues
+     * Retourne la synthèse financière et l'historique des retraits par campagne
+     */
+    public function organizerRevenues(): array {
+        $user = $this->requireAuth();
+        if (!$user) {
+            return ['success' => false, 'message' => 'Non authentifié.'];
+        }
+
+        $userId = (int)$user['user_id'];
+
+        $stmt = $this->db->prepare("
+            SELECT campaign_id, title, is_draft, date_cloture, image_url 
+            FROM Campaign 
+            WHERE organiser_id = ? 
+            ORDER BY campaign_id DESC
+        ");
+        $stmt->execute([$userId]);
+        $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $results = [];
+        $globalRevenue = 0;
+        $globalAvailable = 0;
+
+        foreach ($campaigns as $camp) {
+            $campId = (int)$camp['campaign_id'];
+
+            // Total des revenus bruts
+            $stmtRev = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Vote WHERE campaign_id = ?");
+            $stmtRev->execute([$campId]);
+            $totalRev = (int)$stmtRev->fetchColumn();
+
+            // Total des retraits en cours ou validés (non rejetés)
+            $stmtPay = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status != 'rejected'");
+            $stmtPay->execute([$campId]);
+            $requestedPayouts = (int)$stmtPay->fetchColumn();
+
+            $withdrawable = max(0, (int)round($totalRev * 0.90) - $requestedPayouts);
+
+            // Historique des demandes de retrait
+            $stmtList = $this->db->prepare("SELECT * FROM Payout WHERE campaign_id = ? ORDER BY created_at DESC");
+            $stmtList->execute([$campId]);
+            $payouts = $stmtList->fetchAll(PDO::FETCH_ASSOC);
+
+            $globalRevenue += $totalRev;
+            $globalAvailable += $withdrawable;
+
+            $results[] = [
+                'campaign_id' => $campId,
+                'title' => $camp['title'],
+                'image_url' => $camp['image_url'],
+                'is_draft' => (int)$camp['is_draft'],
+                'date_cloture' => $camp['date_cloture'],
+                'total_revenue' => $totalRev,
+                'available_balance' => $withdrawable,
+                'payouts' => $payouts,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'global_revenue' => $globalRevenue,
+                'global_available' => $globalAvailable,
+                'campaigns' => $results,
+            ]
+        ];
+    }
 }

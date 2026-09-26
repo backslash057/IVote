@@ -104,6 +104,115 @@ class AuthController extends BaseController {
         ];
     }
 
+    /**
+     * PUT/POST /api/auth/profile
+     * Updates profile details (name, email, and optionally password)
+     */
+    public function updateProfile(): array {
+        $user = $this->requireAuth();
+        if (!$user) {
+            return ['success' => false, 'message' => 'Non authentifié.'];
+        }
+
+        $userId = (int)$user['user_id'];
+        $data = $this->getRequestData();
+
+        $name = trim($data['name'] ?? '');
+        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+        $currentPassword = (string)($data['current_password'] ?? '');
+        $newPassword = (string)($data['new_password'] ?? '');
+
+        if (empty($name) || !$email) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le nom et un email valide sont obligatoires.'];
+        }
+
+        // Check if new email is already used by another user
+        $stmtCheck = $this->db->prepare("SELECT user_id FROM Users WHERE email = ? AND user_id != ?");
+        $stmtCheck->execute([$email, $userId]);
+        if ($stmtCheck->fetch()) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Cet e-mail est déjà utilisé par un autre compte.'];
+        }
+
+        if (!empty($newPassword)) {
+            if (empty($currentPassword)) {
+                http_response_code(400);
+                return ['success' => false, 'message' => 'Mot de passe actuel requis pour changer de mot de passe.'];
+            }
+
+            $stmtPass = $this->db->prepare("SELECT password FROM Users WHERE user_id = ?");
+            $stmtPass->execute([$userId]);
+            $dbPass = (string)$stmtPass->fetchColumn();
+
+            if (!password_verify($currentPassword, $dbPass)) {
+                http_response_code(401);
+                return ['success' => false, 'message' => 'Mot de passe actuel incorrect.'];
+            }
+
+            $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            $stmtUpdate = $this->db->prepare("UPDATE Users SET name = ?, email = ?, password = ? WHERE user_id = ?");
+            $stmtUpdate->execute([$name, $email, $newHash, $userId]);
+        } else {
+            $stmtUpdate = $this->db->prepare("UPDATE Users SET name = ?, email = ? WHERE user_id = ?");
+            $stmtUpdate->execute([$name, $email, $userId]);
+        }
+
+        $token = Tokenizer::generateToken($email);
+        $this->setAuthCookie($token);
+
+        return [
+            'success' => true,
+            'message' => 'Profil mis à jour avec succès.',
+            'token' => $token,
+            'user' => [
+                'user_id' => $userId,
+                'name' => $name,
+                'email' => $email,
+            ]
+        ];
+    }
+
+    /**
+     * GET /api/auth/stats
+     * Returns organizer aggregate summary
+     */
+    public function stats(): array {
+        $user = $this->requireAuth();
+        if (!$user) {
+            return ['success' => false, 'message' => 'Non authentifié.'];
+        }
+
+        $userId = (int)$user['user_id'];
+
+        $sql = "
+            SELECT 
+                COUNT(DISTINCT c.campaign_id) AS total_campaigns,
+                COUNT(DISTINCT CASE WHEN c.is_draft = 0 AND (c.date_cloture IS NULL OR c.date_cloture >= NOW()) THEN c.campaign_id END) AS active_campaigns,
+                COALESCE(SUM(v.vote_count), 0) AS total_votes,
+                COALESCE(SUM(v.amount_fcfa), 0) AS total_revenue
+            FROM Campaign c
+            LEFT JOIN Vote v ON v.campaign_id = c.campaign_id
+            WHERE c.organiser_id = ?
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$userId]);
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $totalRevenue = (int)($stats['total_revenue'] ?? 0);
+
+        return [
+            'success' => true,
+            'data' => [
+                'total_campaigns' => (int)($stats['total_campaigns'] ?? 0),
+                'active_campaigns' => (int)($stats['active_campaigns'] ?? 0),
+                'total_votes' => (int)($stats['total_votes'] ?? 0),
+                'total_revenue' => $totalRevenue,
+                'available_balance' => (int)round($totalRevenue * 0.90)
+            ]
+        ];
+    }
+
     private function setAuthCookie(string $token): void {
         setcookie("auth_token", $token, [
             "httponly" => true,

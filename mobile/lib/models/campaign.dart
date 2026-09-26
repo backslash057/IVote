@@ -2,62 +2,154 @@ class Campaign {
   final int id;
   final String title;
   final String description;
-  final String imageUrl;
+  final String? imageUrl;
+  final int pricePerVote;
   final String status;
-  final String organizerName;
+  final String? organizerName;
   final int candidateCount;
   final int totalVotes;
-  final int pricePerVote;
-  final String? dateCloture;
   final String? categories;
 
-  const Campaign({
+  Campaign({
     required this.id,
     required this.title,
     required this.description,
-    required this.imageUrl,
+    this.imageUrl,
+    required this.pricePerVote,
     required this.status,
-    required this.organizerName,
+    this.organizerName,
     required this.candidateCount,
     required this.totalVotes,
-    required this.pricePerVote,
-    this.dateCloture,
     this.categories,
   });
 
-  bool get isActive => status == 'active';
-  bool get isDraft => status == 'draft';
-  bool get isScheduled => status == 'scheduled';
-  bool get isEnded => status == 'ended' || status == 'closed';
-
-  static String _asString(dynamic value, String fallback) {
-    if (value == null) return fallback;
-    return value.toString();
-  }
-
-  static int _asInt(dynamic value, int fallback) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    final parsed = int.tryParse('$value');
-    return parsed ?? fallback;
-  }
-
   factory Campaign.fromJson(Map<String, dynamic> json) {
     return Campaign(
-      id: _asInt(json['campaign_id'] ?? json['id'], 0),
-      title: _asString(json['title'], ''),
-      description: _asString(json['description'], 'Participez à cette campagne de vote.'),
-      imageUrl: _asString(
-        json['image_url'],
-        'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1400&auto=format&fit=crop&q=80',
-      ),
-      status: _asString(json['status'], ''),
-      organizerName: _asString(json['organizer_name'], 'Organisateur IVote'),
-      candidateCount: _asInt(json['candidate_count'], 0),
-      totalVotes: _asInt(json['totalVotes'] ?? json['total_votes'], 0),
-      pricePerVote: _asInt(json['price_per_vote'], 100),
-      dateCloture: json['date_cloture'] as String?,
-      categories: json['categories'] as String?,
+      id: int.tryParse(json['campaign_id']?.toString() ?? '0') ?? 0,
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      imageUrl: json['image_url'],
+      pricePerVote: int.tryParse(json['price_per_vote']?.toString() ?? '100') ?? 100,
+      status: json['status'] ?? (json['is_draft'] == 1 ? 'draft' : 'active'),
+      organizerName: json['organizer_name'],
+      candidateCount: int.tryParse(json['candidate_count']?.toString() ?? '0') ?? 0,
+      totalVotes: int.tryParse(json['totalVotes']?.toString() ?? '0') ?? 0,
+      categories: json['categories'],
+    );
+  }
+}
+
+class CampaignDetail {
+  final int id;
+  final String title;
+  final String description;
+  final String? imageUrl;
+  final int pricePerVote;
+  final String status;
+  final String? organizerName;
+  final String? dateCloture;
+  final int totalVotes;
+  final int candidateCount;
+  final List<CampaignCategory> categories;
+
+  CampaignDetail({
+    required this.id,
+    required this.title,
+    required this.description,
+    this.imageUrl,
+    required this.pricePerVote,
+    required this.status,
+    this.organizerName,
+    this.dateCloture,
+    required this.totalVotes,
+    required this.candidateCount,
+    required this.categories,
+  });
+
+  factory CampaignDetail.fromJson(Map<String, dynamic> json) {
+    final categoriesList = (json['categories'] as List<dynamic>?)
+            ?.map((c) => CampaignCategory.fromJson(c as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    return CampaignDetail(
+      id: int.tryParse(json['campaign_id']?.toString() ?? '0') ?? 0,
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      imageUrl: json['image_url'],
+      pricePerVote: int.tryParse(json['price_per_vote']?.toString() ?? '100') ?? 100,
+      status: json['computed_status'] ?? json['status'] ?? 'active',
+      organizerName: json['organizer_name'],
+      dateCloture: json['date_cloture'],
+      totalVotes: int.tryParse(json['totalVotes']?.toString() ?? '0') ?? 0,
+      candidateCount: int.tryParse(json['candidateCount']?.toString() ?? '0') ?? 0,
+      categories: categoriesList,
+    );
+  }
+}
+
+class CampaignCategory {
+  final int id;
+  final String name;
+  final List<Candidate> candidates;
+
+  CampaignCategory({
+    required this.id,
+    required this.name,
+    required this.candidates,
+  });
+
+  factory CampaignCategory.fromJson(Map<String, dynamic> json) {
+    final candidatesList = (json['candidates'] as List<dynamic>?)
+            ?.map((c) => Candidate.fromJson(c as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    return CampaignCategory(
+      id: int.tryParse(json['id']?.toString() ?? json['category_id']?.toString() ?? '0') ?? 0,
+      name: json['name'] ?? '',
+      candidates: candidatesList,
+    );
+  }
+}
+
+class Candidate {
+  final int id;
+  final int number;
+  final String name;
+  final int? age;
+  final String? theme;
+  final String? description;
+  final String? bio;
+  final String? imageUrl;
+  final int votes;
+  final double percentage;
+
+  Candidate({
+    required this.id,
+    required this.number,
+    required this.name,
+    this.age,
+    this.theme,
+    this.description,
+    this.bio,
+    this.imageUrl,
+    required this.votes,
+    required this.percentage,
+  });
+
+  factory Candidate.fromJson(Map<String, dynamic> json) {
+    return Candidate(
+      id: int.tryParse(json['id']?.toString() ?? json['candidate_id']?.toString() ?? '0') ?? 0,
+      number: int.tryParse(json['number']?.toString() ?? json['candidate_number']?.toString() ?? '0') ?? 0,
+      name: json['name'] ?? '',
+      age: json['age'] != null ? int.tryParse(json['age'].toString()) : null,
+      theme: json['theme'],
+      description: json['description'],
+      bio: json['bio'],
+      imageUrl: json['image_url'],
+      votes: int.tryParse(json['votes']?.toString() ?? '0') ?? 0,
+      percentage: (json['percentage'] is num) ? (json['percentage'] as num).toDouble() : 0.0,
     );
   }
 }

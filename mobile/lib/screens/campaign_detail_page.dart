@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-
-import '../models/campaign_detail.dart';
+import '../config.dart';
+import '../models/campaign.dart';
 import '../services/campaign_service.dart';
-import '../theme.dart';
-import '../utils/price.dart';
+import '../theme/app_theme.dart';
 import '../widgets/vote_sheet.dart';
 
 class CampaignDetailPage extends StatefulWidget {
@@ -26,51 +25,67 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
   }
 
   void _load() {
-    _future = _service.fetchCampaignDetail(widget.campaignId);
+    setState(() {
+      _future = _service.fetchCampaignDetail(widget.campaignId);
+    });
   }
 
-  void _reload() {
-    setState(_load);
+  String _formatNumber(num number) {
+    return number.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]} ',
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        title: Text(
+          'Détails de la Campagne',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: theme.colorScheme.onSurface),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => ThemeController.toggleTheme(),
+            icon: Icon(
+              ThemeController.isDarkMode ? Icons.wb_sunny_outlined : Icons.nightlight_round_outlined,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: FutureBuilder<CampaignDetail>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(color: AppColors.emerald),
-              ),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
+
           if (snapshot.hasError) {
-            return Scaffold(
-              appBar: AppBar(title: const Text('Campagne')),
-              body: Center(
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cloud_off,
-                        color: AppColors.danger, size: 40),
+                    const Icon(Icons.error_outline_rounded, color: AppColors.redAccent, size: 40),
                     const SizedBox(height: 12),
                     Text(
-                      '${snapshot.error}',
+                      'Erreur de chargement',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${snapshot.error}'.replaceAll('Exception: ', ''),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: _reload,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Réessayer'),
-                    ),
+                    ElevatedButton(onPressed: _load, child: const Text('Réessayer')),
                   ],
                 ),
               ),
@@ -78,364 +93,255 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
           }
 
           final detail = snapshot.data!;
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                expandedHeight: 220,
-                backgroundColor: AppColors.surfaceAlt,
-                leading: const BackButton(color: Colors.white),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _banner(detail),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              AppColors.bg,
-                            ],
-                            stops: [0.5, 1.0],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+          final isActive = detail.status == 'active';
+
+          return RefreshIndicator(
+            onRefresh: () async => _load(),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              children: [
+                _buildHeroBanner(theme, detail, isActive),
+                const SizedBox(height: 24),
+
+                Text(
+                  'Candidats en compétition',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _statusBadge(detail),
-                      const SizedBox(height: 12),
-                      Text(
-                        detail.title,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
+                const SizedBox(height: 12),
+
+                if (detail.categories.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Text(
+                        'Aucun candidat inscrit dans cette campagne.',
+                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        detail.organizerName,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.emeraldLight,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        detail.description,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          height: 1.5,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _statsRow(detail),
-                      const SizedBox(height: 28),
-                      if (!detail.isActive)
-                        _closedNotice(detail)
-                      else
-                        ...detail.categories.map(_categorySection),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+                    ),
+                  )
+                else
+                  ...detail.categories.map((category) => _buildCategorySection(theme, detail, category, isActive)),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _banner(CampaignDetail detail) {
-    return Image.network(
-      detail.imageUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: AppColors.surfaceAlt,
-        alignment: Alignment.center,
-        child: const Icon(Icons.how_to_vote,
-            color: AppColors.emerald, size: 48),
-      ),
-    );
-  }
+  Widget _buildHeroBanner(ThemeData theme, CampaignDetail detail, bool isActive) {
+    String? imageUrl = detail.imageUrl;
+    if (imageUrl != null && imageUrl.startsWith('/')) {
+      imageUrl = '$kBaseUrl$imageUrl';
+    }
 
-  Widget _statusBadge(CampaignDetail detail) {
-    final (label, color) = detail.isActive
-        ? ('● En Direct', AppColors.emerald)
-        : detail.isDraft
-            ? ('Brouillon', AppColors.amberDark)
-            : ('Terminé', AppColors.surfaceAlt);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _statsRow(CampaignDetail detail) {
-    return Row(
-      children: [
-        _statBox(formatCount(detail.totalVotes), 'Votes'),
-        const SizedBox(width: 10),
-        _statBox('${detail.candidateCount}', 'Candidats'),
-        const SizedBox(width: 10),
-        _statBox(formatFcfa(detail.pricePerVote), 'Prix / vote'),
-      ],
-    );
-  }
-
-  Widget _statBox(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _closedNotice(CampaignDetail detail) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.outline),
       ),
-      child: const Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_clock, color: AppColors.amberDark),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Les votes sont fermés pour cette campagne. Consultez les résultats ci-dessous.',
-              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Image.network(
+              imageUrl,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _categorySection(CampaignCategory category) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                category.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                '${category.candidates.length} candidat${category.candidates.length > 1 ? 's' : ''}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ...category.candidates.map((candidate) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _CandidateTile(
-                candidate: candidate,
-                onVote: () => _startVote(candidate),
-              ),
-            )),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Future<void> _startVote(Candidate candidate) async {
-    final detail = await _future;
-    if (!mounted) return;
-    final voted = await showVoteSheet(
-      context,
-      campaign: detail,
-      candidate: candidate,
-    );
-    if (voted == true && mounted) _reload();
-  }
-}
-
-class _CandidateTile extends StatelessWidget {
-  final Candidate candidate;
-  final VoidCallback onVote;
-
-  const _CandidateTile({required this.candidate, required this.onVote});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          _avatar(),
-          const SizedBox(width: 12),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'N° ${candidate.number} · ${candidate.name}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                if (candidate.theme != null && candidate.theme!.isNotEmpty)
-                  Text(
-                    candidate.theme!,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.emeraldLight,
-                    ),
-                  ),
-                const SizedBox(height: 6),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      formatCount(candidate.votes),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.amber,
-                        fontSize: 13,
-                      ),
+                      'Par ${detail.organizerName ?? 'Organisateur'}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'votes · ${candidate.percentage.toStringAsFixed(1)}%',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: theme.colorScheme.outline),
+                      ),
+                      child: Text(
+                        isActive ? '● En Direct' : 'Terminé',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isActive ? AppColors.greenAccent : theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  detail.title,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                ),
                 const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: (candidate.percentage / 100).clamp(0.0, 1.0),
-                    minHeight: 5,
-                    backgroundColor: AppColors.surfaceAlt,
-                    color: AppColors.emerald,
-                  ),
+                Text(
+                  detail.description,
+                  style: TextStyle(fontSize: 13, height: 1.5, color: theme.colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                Divider(color: theme.colorScheme.outline),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatCol(theme, 'PRIX DU VOTE', '${detail.pricePerVote} FCFA'),
+                    _buildStatCol(theme, 'TOTAL DES VOTES', _formatNumber(detail.totalVotes)),
+                    _buildStatCol(theme, 'CANDIDATS', '${detail.candidateCount}'),
+                  ],
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: onVote,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              backgroundColor: AppColors.emerald,
-            ),
-            child: const Text('Voter', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
     );
   }
 
-  Widget _avatar() {
-    if (candidate.imageUrl.isEmpty) {
-      return _initialAvatar();
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Image.network(
-        candidate.imageUrl,
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _initialAvatar(),
+  Widget _buildStatCol(ThemeData theme, String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+
+  Widget _buildCategorySection(ThemeData theme, CampaignDetail detail, CampaignCategory category, bool isActive) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              category.name,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...category.candidates.map((cand) => _buildCandidateCard(theme, detail, cand, isActive)),
+        ],
       ),
     );
   }
 
-  Widget _initialAvatar() {
+  Widget _buildCandidateCard(ThemeData theme, CampaignDetail detail, Candidate cand, bool isActive) {
     return Container(
-      width: 48,
-      height: 48,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.emerald,
-        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outline),
       ),
-      alignment: Alignment.center,
-      child: Text(
-        candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                child: Text(
+                  '#${cand.number}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cand.name,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                    ),
+                    if (cand.theme != null && cand.theme!.isNotEmpty)
+                      Text(
+                        cand.theme!,
+                        style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${cand.percentage.toStringAsFixed(1)}%',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: theme.colorScheme.primary),
+                  ),
+                  Text(
+                    '${_formatNumber(cand.votes)} votes',
+                    style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: cand.percentage / 100,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+              minHeight: 6,
+            ),
+          ),
+          if (isActive) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final voted = await showVoteSheet(context, campaign: detail, candidate: cand);
+                  if (voted == true) {
+                    _load();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Vote enregistré avec succès !'),
+                        backgroundColor: AppColors.greenAccent,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.how_to_vote_rounded, size: 16),
+                label: const Text('Voter pour ce candidat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

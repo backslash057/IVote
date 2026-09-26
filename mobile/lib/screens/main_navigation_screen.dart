@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'dashboard_page.dart';
 import 'home_page.dart';
-import 'placeholder_page.dart';
+import 'profile_page.dart';
+import 'revenues_page.dart';
+
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -15,21 +18,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _pages = const [
     HomePage(),
-    PlaceholderPage(
-      title: 'Tableau de bord',
-      subtitle: 'Gestion et statistiques de vos campagnes organisées.',
-      icon: Icons.bar_chart_rounded,
-    ),
-    PlaceholderPage(
-      title: 'Revenus & Retraits',
-      subtitle: 'Suivi de vos gains MoMo / OM et demandes de virements.',
-      icon: Icons.account_balance_wallet_rounded,
-    ),
-    PlaceholderPage(
-      title: 'Mon Compte',
-      subtitle: 'Profil, paramètres et sécurité de votre compte.',
-      icon: Icons.person_rounded,
-    ),
+    DashboardPage(),
+    RevenuesPage(), // <-- Onglet 3 : Revenus & Retraits
+    ProfilePage(),
   ];
 
   @override
@@ -38,7 +29,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final borderSide = BorderSide(color: theme.colorScheme.outline.withOpacity(0.5));
 
     return Scaffold(
-      // --- NAVBAR UNIQUE & COMMUNE À TOUS LES ONGLETS ---
       appBar: AppBar(
         titleSpacing: 16,
         title: Row(
@@ -87,7 +77,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ],
         ),
         actions: [
-          // Bouton Basculer le thème (Soleil / Lune)
           IconButton(
             onPressed: () => ThemeController.toggleTheme(),
             icon: Container(
@@ -108,14 +97,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           const SizedBox(width: 8),
         ],
       ),
-
-      // --- CORPS VARIABLE SELON L'ONGLET SÉLECTIONNÉ ---
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ),
-
-      // --- BOTTOM NAVIGATION BAR ---
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: borderSide),

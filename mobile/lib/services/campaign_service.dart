@@ -1,138 +1,258 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../models/campaign.dart';
-import '../models/campaign_detail.dart';
-import '../models/dashboard.dart';
-import '../models/user.dart';
-import 'api_client.dart';
+import 'auth_service.dart';
 
 class CampaignService {
-  final ApiClient _api = ApiClient();
-
-  Future<List<Campaign>> fetchCampaigns() async {
-    final result = await _api.get('/api/campaigns');
-    return _toCampaignList(result['data']);
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await AuthService().getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
   }
 
-  Future<CampaignDetail> fetchCampaignDetail(int id) async {
-    final result = await _api.get('/api/campaigns/$id');
-    final data = result['data'];
-    if (data is! Map<String, dynamic>) {
-      throw ApiException('Campagne introuvable.');
+  Future<List<Campaign>> fetchCampaigns() async {
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/api/campaigns'),
+      headers: {'Accept': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final List<dynamic> data = json['data'] ?? [];
+      return data.map((item) => Campaign.fromJson(item)).toList();
+    } else {
+      throw Exception('Erreur lors du chargement des campagnes (${response.statusCode})');
     }
-    return CampaignDetail.fromJson(data);
   }
 
   Future<List<Campaign>> fetchMyCampaigns() async {
-    final result = await _api.get('/api/my-campaigns');
-    return _toCampaignList(result['data']);
-  }
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/api/my-campaigns'),
+      headers: headers,
+    );
 
-  Future<DashboardData> dashboard(int campaignId) async {
-    final result = await _api.get('/api/campaigns/$campaignId/dashboard');
-    final data = result['data'];
-    if (data is! Map<String, dynamic>) {
-      throw ApiException('Données du tableau de bord indisponibles.');
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final List<dynamic> data = json['data'] ?? [];
+      return data.map((item) => Campaign.fromJson(item)).toList();
+    } else if (response.statusCode == 401) {
+      throw Exception('Non authentifié. Veuillez vous reconnecter.');
+    } else {
+      throw Exception('Impossible de charger vos campagnes.');
     }
-    return DashboardData.fromJson(data);
   }
 
-  Future<int> createCampaign({
+  Future<CampaignDetail> fetchCampaignDetail(int id) async {
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/api/campaigns/$id'),
+      headers: {'Accept': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      if (json['success'] == true && json['data'] != null) {
+        return CampaignDetail.fromJson(json['data']);
+      }
+      throw Exception(json['message'] ?? 'Campagne introuvable.');
+    } else {
+      throw Exception('Erreur serveur lors de la récupération des détails.');
+    }
+  }
+
+  /// Récupère toutes les données du dashboard de gestion d'une campagne
+  Future<Map<String, dynamic>> fetchCampaignDashboard(int id) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/api/campaigns/$id/dashboard'),
+      headers: headers,
+    );
+
+    final json = jsonDecode(response.body);
+    if (response.statusCode == 200 && json['success'] == true) {
+      return json['data'];
+    } else {
+      throw Exception(json['message'] ?? 'Impossible de charger les données de gestion.');
+    }
+  }
+
+  /// Met à jour les infos d'une campagne
+  Future<Map<String, dynamic>> updateCampaign({
+    required int id,
     required String title,
     required String description,
     required int pricePerVote,
     String? dateCloture,
   }) async {
-    final result = await _api.post('/api/campaigns', body: {
-      'title': title,
-      'description': description,
-      'price_per_vote': pricePerVote,
-      if (dateCloture != null && dateCloture.isNotEmpty) 'date_cloture': dateCloture,
-    });
-    final id = _toInt(result['campaign_id'], 0);
-    return id;
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns/$id/update'),
+      headers: headers,
+      body: jsonEncode({
+        'title': title,
+        'description': description,
+        'price_per_vote': pricePerVote,
+        'date_cloture': dateCloture,
+      }),
+    );
+
+    final json = jsonDecode(response.body);
+    if (response.statusCode == 200 && json['success'] == true) {
+      return json;
+    }
+    throw Exception(json['message'] ?? 'Erreur lors de la modification.');
   }
 
-  Future<void> updateCampaign(
-    int id, {
-    required String title,
-    required String description,
-    required int pricePerVote,
-    String? dateCloture,
-  }) async {
-    await _api.post('/api/campaigns/$id/update', body: {
-      'title': title,
-      'description': description,
-      'price_per_vote': pricePerVote,
-      if (dateCloture != null && dateCloture.isNotEmpty) 'date_cloture': dateCloture,
-    });
+  /// Change le statut (publish ou close)
+  Future<Map<String, dynamic>> updateCampaignStatus(int id, String action) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns/$id/status'),
+      headers: headers,
+      body: jsonEncode({'action': action}),
+    );
+
+    final json = jsonDecode(response.body);
+    if (response.statusCode == 200 && json['success'] == true) {
+      return json;
+    }
+    throw Exception(json['message'] ?? 'Erreur lors de la mise à jour du statut.');
   }
 
-  Future<void> setStatus(int id, String action) async {
-    await _api.post('/api/campaigns/$id/status', body: {'action': action});
+  /// Relance une campagne
+  Future<Map<String, dynamic>> relaunchCampaign(int id, String dateCloture) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns/$id/relaunch'),
+      headers: headers,
+      body: jsonEncode({'date_cloture': dateCloture}),
+    );
+
+    final json = jsonDecode(response.body);
+    if (response.statusCode == 200 && json['success'] == true) {
+      return json;
+    }
+    throw Exception(json['message'] ?? 'Erreur lors de la relance.');
   }
 
-  Future<void> relaunch(int id, String dateCloture) async {
-    await _api.post('/api/campaigns/$id/relaunch', body: {'date_cloture': dateCloture});
-  }
-
-  Future<void> addCandidate(
-    int campaignId, {
+  /// Ajout d'un candidat avec support multipart pour photo optionnelle
+  Future<Map<String, dynamic>> addCandidate({
+    required int campaignId,
     required String name,
     required int candidateNumber,
     int? age,
     String? theme,
-    String? categoryName,
+    String? description,
+    String? bio,
+    int? categoryId,
     String? newCategoryName,
+    File? imageFile,
   }) async {
-    await _api.post('/api/campaigns/$campaignId/candidates', body: {
-      'name': name,
-      'candidate_number': candidateNumber,
-      if (age != null) 'age': age,
-      if (theme != null && theme.isNotEmpty) 'theme': theme,
-      if (categoryName != null && categoryName.isNotEmpty) 'category_name': categoryName,
-      if (newCategoryName != null && newCategoryName.isNotEmpty) 'new_category_name': newCategoryName,
-    });
+    final token = await AuthService().getToken();
+    final uri = Uri.parse('$kBaseUrl/api/campaigns/$campaignId/candidates');
+    final request = http.MultipartRequest('POST', uri);
+
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    request.headers['Accept'] = 'application/json';
+
+    request.fields['name'] = name;
+    request.fields['candidate_number'] = candidateNumber.toString();
+    if (age != null) request.fields['age'] = age.toString();
+    if (theme != null && theme.isNotEmpty) request.fields['theme'] = theme;
+    if (description != null && description.isNotEmpty) request.fields['description'] = description;
+    if (bio != null && bio.isNotEmpty) request.fields['bio'] = bio;
+    if (categoryId != null) request.fields['category_id'] = categoryId.toString();
+    if (newCategoryName != null && newCategoryName.isNotEmpty) {
+      request.fields['new_category_name'] = newCategoryName;
+    }
+
+    if (imageFile != null) {
+      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    final json = jsonDecode(response.body);
+
+    if ((response.statusCode == 200 || response.statusCode == 201) && json['success'] == true) {
+      return json;
+    }
+    throw Exception(json['message'] ?? 'Erreur lors de l\'ajout du candidat.');
   }
 
-  Future<void> createPayout(
-    int campaignId, {
+  /// Récupère la synthèse financière globale et par campagne
+  Future<Map<String, dynamic>> fetchRevenues() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/api/organizer/revenues'),
+      headers: headers,
+    );
+
+    final json = jsonDecode(response.body);
+    if (response.statusCode == 200 && json['success'] == true) {
+      return json['data'];
+    }
+    throw Exception(json['message'] ?? 'Impossible de charger les données financières.');
+  }
+
+  /// Effectue une demande de retrait
+  Future<Map<String, dynamic>> requestPayout({
+    required int campaignId,
     required int amount,
     required String paymentMethod,
     required String accountHolder,
     required String walletNumber,
   }) async {
-    await _api.post('/api/campaigns/$campaignId/payouts', body: {
-      'amount': amount,
-      'payment_method': paymentMethod,
-      'account_holder': accountHolder,
-      'wallet_number': walletNumber,
-    });
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns/$campaignId/payouts'),
+      headers: headers,
+      body: jsonEncode({
+        'amount': amount,
+        'payment_method': paymentMethod,
+        'account_holder': accountHolder,
+        'wallet_number': walletNumber,
+      }),
+    );
+
+    final json = jsonDecode(response.body);
+    if ((response.statusCode == 200 || response.statusCode == 201) && json['success'] == true) {
+      return json;
+    }
+    throw Exception(json['message'] ?? 'Erreur lors de la demande de retrait.');
   }
 
-  Future<VoteRecord> recordVote(
-    int campaignId, {
+  Future<Map<String, dynamic>> recordVote({
+    required int campaignId,
     required int candidateId,
     required int voteCount,
     required String paymentMethod,
   }) async {
-    final result = await _api.post('/api/campaigns/$campaignId/votes', body: {
+    final headers = await _getHeaders();
+    final body = jsonEncode({
       'candidate_id': candidateId,
       'vote_count': voteCount,
       'payment_method': paymentMethod,
     });
-    return VoteRecord.fromJson(result);
-  }
 
-  List<Campaign> _toCampaignList(dynamic data) {
-    if (data is! List) return const [];
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(Campaign.fromJson)
-        .toList();
-  }
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns/$campaignId/votes'),
+      headers: headers,
+      body: body,
+    );
 
-  int _toInt(dynamic value, int fallback) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse('$value') ?? fallback;
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Erreur lors de l\'enregistrement du vote.');
+    }
   }
 }
