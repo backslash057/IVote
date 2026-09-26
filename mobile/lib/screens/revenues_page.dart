@@ -14,20 +14,20 @@ class RevenuesPage extends StatefulWidget {
 
 class _RevenuesPageState extends State<RevenuesPage> {
   final CampaignService _service = CampaignService();
-  late Future<Map<String, dynamic>> _future;
+  Future<Map<String, dynamic>>? _future;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    if (AuthService().isAuthenticated) {
+      _load();
+    }
   }
 
   void _load() {
-    if (AuthService().isAuthenticated) {
-      setState(() {
-        _future = _service.fetchRevenues();
-      });
-    }
+    setState(() {
+      _future = _service.fetchRevenues();
+    });
   }
 
   String _formatNumber(num number) {
@@ -285,7 +285,10 @@ class _RevenuesPageState extends State<RevenuesPage> {
           return _buildGuestView(theme);
         }
 
+        _future ??= _service.fetchRevenues();
+
         return RefreshIndicator(
+          color: theme.colorScheme.primary,
           onRefresh: () async => _load(),
           child: FutureBuilder<Map<String, dynamic>>(
             future: _future,
@@ -312,7 +315,7 @@ class _RevenuesPageState extends State<RevenuesPage> {
                 );
               }
 
-              final data = snapshot.data!;
+              final data = snapshot.data ?? {};
               final globalRevenue = data['global_revenue'] ?? 0;
               final globalAvailable = data['global_available'] ?? 0;
               final campaigns = (data['campaigns'] as List<dynamic>?) ?? [];
