@@ -1,7 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
     const campaignId = document.body.dataset.campaignId;
+    const candidatesCount = parseInt(document.body.dataset.candidatesCount || '0', 10);
 
-    // 1. Navigation des onglets
+    // --- 1. Gestion des dates minimales (+5 minutes) ---
+    const getMinDateTime = () => {
+        const minDate = new Date(Date.now() + 5 * 60 * 1000);
+        const y = minDate.getFullYear();
+        const m = String(minDate.getMonth() + 1).padStart(2, '0');
+        const d = String(minDate.getDate()).padStart(2, '0');
+        const h = String(minDate.getHours()).padStart(2, '0');
+        const min = String(minDate.getMinutes()).padStart(2, '0');
+        return `${y}-${m}-${d}T${h}:${min}`;
+    };
+
+    const editDateInput = document.getElementById('edit_date_cloture');
+    const relaunchDateInput = document.getElementById('relaunch_date_cloture');
+    if (editDateInput) editDateInput.min = getMinDateTime();
+    if (relaunchDateInput) relaunchDateInput.min = getMinDateTime();
+
+    // --- 2. Navigation des onglets ---
     window.switchTab = function (tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(el => {
@@ -19,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 2. Gestion des Modales
+    // --- 3. Gestion des modales ---
     window.toggleModal = function (modalId, show) {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -33,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 3. Catégorie personnalisée
+    // --- 4. Catégorie personnalisée ---
     const categorySelect = document.getElementById('categorySelect');
     if (categorySelect) {
         categorySelect.addEventListener('change', (e) => {
@@ -50,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Recherche et filtre des transactions
+    // --- 5. Recherche et filtre des transactions ---
     const txSearch = document.getElementById('txSearch');
     const paymentFilter = document.getElementById('paymentFilter');
 
@@ -69,8 +86,119 @@ document.addEventListener('DOMContentLoaded', () => {
     if (txSearch) txSearch.addEventListener('keyup', filterTransactions);
     if (paymentFilter) paymentFilter.addEventListener('change', filterTransactions);
 
-    // 5. Statut : Publier / Clôturer
+// --- 6. Gestion du Recadrage Générique avec ratio dynamique ---
+    const genericCropModal = document.getElementById('genericCropModal');
+    const genericCropTarget = document.getElementById('genericCropTarget');
+    const genericCropTitle = document.getElementById('genericCropTitle');
+    const btnApplyGenericCrop = document.getElementById('btnApplyGenericCrop');
+    const btnCancelGenericCrop = document.getElementById('btnCancelGenericCrop');
+
+    let activeCropper = null;
+    let onCropDoneCallback = null;
+
+    function openCropper(file, aspectRatio, titleText, onDone) {
+        onCropDoneCallback = onDone;
+        if (genericCropTitle) genericCropTitle.textContent = titleText || "Recadrer la photo";
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            genericCropTarget.src = e.target.result;
+            genericCropModal.classList.remove('hidden');
+            if (activeCropper) activeCropper.destroy();
+
+            activeCropper = new Cropper(genericCropTarget, {
+                aspectRatio: aspectRatio,
+                viewMode: 2,
+                autoCropArea: 1,
+                responsive: true
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    btnCancelGenericCrop.addEventListener('click', () => {
+        genericCropModal.classList.add('hidden');
+        if (activeCropper) activeCropper.destroy();
+        activeCropper = null;
+    });
+
+    btnApplyGenericCrop.addEventListener('click', () => {
+        if (!activeCropper) return;
+        activeCropper.getCroppedCanvas({
+            maxWidth: 1600,
+            maxHeight: 1200,
+            imageSmoothingQuality: 'high'
+        }).toBlob((blob) => {
+            if (onCropDoneCallback) onCropDoneCallback(blob);
+            genericCropModal.classList.add('hidden');
+            activeCropper.destroy();
+            activeCropper = null;
+        }, 'image/webp', 0.88);
+    });
+
+    // --- 7. Upload Photo Candidat (Ratio 3:4 Portrait) ---
+    let candidateCroppedBlob = null;
+    const candidateInput = document.getElementById('candidateImageInput');
+    const candidatePlaceholder = document.getElementById('candidateUploadPlaceholder');
+    const candidatePreviewContainer = document.getElementById('candidatePreviewContainer');
+    const candidatePreview = document.getElementById('candidateImagePreview');
+    const btnRemoveCandidateImage = document.getElementById('btnRemoveCandidateImage');
+
+    candidatePlaceholder.addEventListener('click', () => candidateInput.click());
+    candidateInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            openCropper(e.target.files[0], 3 / 4, "Recadrer la photo du candidat (Portrait 3:4)", (blob) => {
+                candidateCroppedBlob = blob;
+                candidatePreview.src = URL.createObjectURL(blob);
+                candidatePlaceholder.classList.add('hidden');
+                candidatePreviewContainer.classList.remove('hidden');
+            });
+        }
+    });
+
+    btnRemoveCandidateImage.addEventListener('click', () => {
+        candidateCroppedBlob = null;
+        candidateInput.value = '';
+        candidatePreview.src = '';
+        candidatePreviewContainer.classList.add('hidden');
+        candidatePlaceholder.classList.remove('hidden');
+    });
+
+    // --- 8. Upload Photo Campagne (Ratio 16:9 Paysage) ---
+    let campaignCroppedBlob = null;
+    const campaignInput = document.getElementById('campaignImageInput');
+    const campaignPlaceholder = document.getElementById('campaignUploadPlaceholder');
+    const campaignPreviewContainer = document.getElementById('campaignPreviewContainer');
+    const campaignPreview = document.getElementById('campaignImagePreview');
+    const btnRemoveCampaignImage = document.getElementById('btnRemoveCampaignImage');
+
+    campaignPlaceholder.addEventListener('click', () => campaignInput.click());
+    campaignInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            openCropper(e.target.files[0], 16 / 9, "Recadrer l'affiche (Paysage 16:9)", (blob) => {
+                campaignCroppedBlob = blob;
+                campaignPreview.src = URL.createObjectURL(blob);
+                campaignPlaceholder.classList.add('hidden');
+                campaignPreviewContainer.classList.remove('hidden');
+            });
+        }
+    });
+
+    btnRemoveCampaignImage.addEventListener('click', () => {
+        campaignCroppedBlob = null;
+        campaignInput.value = '';
+        campaignPreview.src = '';
+        campaignPreviewContainer.classList.add('hidden');
+        campaignPlaceholder.classList.remove('hidden');
+    });
+
+    // --- 9. Statut : Publier (avec vérification 0 candidat) / Clôturer ---
     window.updateCampaignAction = async function (action) {
+        if (action === 'publish' && candidatesCount === 0) {
+            alert("Action impossible : Vous devez ajouter au moins un candidat avant de publier la campagne.");
+            return;
+        }
+
         const label = action === 'publish' ? 'passer en direct' : 'clôturer la campagne';
         if (!confirm(`Confirmez-vous vouloir ${label} ?`)) return;
 
@@ -94,75 +222,146 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 6. Ajouter un candidat
+    // --- 10. Envoi Candidat avec barre de progression ---
     const formCandidate = document.getElementById('formCandidate');
     if (formCandidate) {
-        formCandidate.addEventListener('submit', async (e) => {
+        formCandidate.addEventListener('submit', (e) => {
             e.preventDefault();
-            const submitBtn = formCandidate.querySelector('button[type="submit"]');
+            const submitBtn = document.getElementById('submitCandidateBtn');
+            const progressContainer = document.getElementById('candidateProgressContainer');
+            const progressBar = document.getElementById('candidateProgressBar');
+            const uploadPercent = document.getElementById('candidateUploadPercent');
+            const uploadStatus = document.getElementById('candidateUploadStatus');
+
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Enregistrement...';
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            uploadPercent.textContent = '0%';
+            uploadStatus.textContent = 'Envoi...';
 
             const formData = new FormData(formCandidate);
-
-            try {
-                const res = await fetch(`/api/campaigns/${campaignId}/candidates`, {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json' },
-                    body: formData
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message || 'Erreur lors de l\'ajout du candidat');
-                }
-            } catch (err) {
-                alert('Une erreur réseau est survenue.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Enregistrer';
+            if (candidateCroppedBlob) {
+                formData.set('image', candidateCroppedBlob, 'candidate.webp');
+            } else {
+                formData.delete('image');
             }
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/api/campaigns/${campaignId}/candidates`, true);
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) {
+                    const percent = Math.round((evt.loaded / evt.total) * 100);
+                    progressBar.style.width = `${percent}%`;
+                    uploadPercent.textContent = `${percent}%`;
+                }
+            };
+
+            xhr.onload = () => {
+                submitBtn.disabled = false;
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Erreur lors de l\'ajout du candidat');
+                        progressContainer.classList.add('hidden');
+                    }
+                } catch {
+                    alert('Erreur de réponse du serveur.');
+                    progressContainer.classList.add('hidden');
+                }
+            };
+
+            xhr.onerror = () => {
+                submitBtn.disabled = false;
+                progressContainer.classList.add('hidden');
+                alert('Erreur réseau.');
+            };
+
+            xhr.send(formData);
         });
     }
 
-    // 7. Modifier la photo de couverture
+    // --- 11. Envoi Photo Campagne avec barre de progression ---
     const formPhoto = document.getElementById('formPhoto');
     if (formPhoto) {
-        formPhoto.addEventListener('submit', async (e) => {
+        formPhoto.addEventListener('submit', (e) => {
             e.preventDefault();
-            const submitBtn = formPhoto.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Téléchargement...';
-
-            const formData = new FormData(formPhoto);
-
-            try {
-                const res = await fetch(`/api/campaigns/${campaignId}/update-photo`, {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json' },
-                    body: formData
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message || 'Erreur lors de la mise à jour de la photo');
-                }
-            } catch (err) {
-                alert('Une erreur réseau est survenue.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Mettre à jour';
+            if (!campaignCroppedBlob) {
+                alert("Veuillez sélectionner et recadrer une image.");
+                return;
             }
+
+            const submitBtn = document.getElementById('submitCampaignPhotoBtn');
+            const progressContainer = document.getElementById('campaignProgressContainer');
+            const progressBar = document.getElementById('campaignProgressBar');
+            const uploadPercent = document.getElementById('campaignUploadPercent');
+            const uploadStatus = document.getElementById('campaignUploadStatus');
+
+            submitBtn.disabled = true;
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            uploadPercent.textContent = '0%';
+            uploadStatus.textContent = 'Téléversement...';
+
+            const formData = new FormData();
+            formData.set('campaign_image', campaignCroppedBlob, 'banner.webp');
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/api/campaigns/${campaignId}/update-photo`, true);
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) {
+                    const percent = Math.round((evt.loaded / evt.total) * 100);
+                    progressBar.style.width = `${percent}%`;
+                    uploadPercent.textContent = `${percent}%`;
+                }
+            };
+
+            xhr.onload = () => {
+                submitBtn.disabled = false;
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Erreur lors de la mise à jour');
+                        progressContainer.classList.add('hidden');
+                    }
+                } catch {
+                    alert('Erreur serveur.');
+                    progressContainer.classList.add('hidden');
+                }
+            };
+
+            xhr.onerror = () => {
+                submitBtn.disabled = false;
+                progressContainer.classList.add('hidden');
+                alert('Erreur réseau.');
+            };
+
+            xhr.send(formData);
         });
     }
 
-    // 8. Modifier la campagne
+    // --- 12. Modifier la campagne avec validation date future ---
     const formEditCampaign = document.getElementById('formEditCampaign');
     if (formEditCampaign) {
         formEditCampaign.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            if (editDateInput && editDateInput.value) {
+                const selectedTime = new Date(editDateInput.value).getTime();
+                const minTime = Date.now() + (5 * 60 * 1000) - 1000;
+                if (selectedTime < minTime) {
+                    alert("La date de clôture doit être située au moins 5 minutes dans le futur.");
+                    return;
+                }
+            }
+
             const submitBtn = formEditCampaign.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
 
@@ -172,10 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch(`/api/campaigns/${campaignId}/update`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json' 
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -192,11 +388,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 9. Relancer la campagne
+    // --- 13. Relancer la campagne avec validation date future ---
     const formRelaunch = document.getElementById('formRelaunch');
     if (formRelaunch) {
         formRelaunch.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            if (relaunchDateInput && relaunchDateInput.value) {
+                const selectedTime = new Date(relaunchDateInput.value).getTime();
+                const minTime = Date.now() + (5 * 60 * 1000) - 1000;
+                if (selectedTime < minTime) {
+                    alert("La nouvelle date de clôture doit être située au moins 5 minutes dans le futur.");
+                    return;
+                }
+            }
+
             const submitBtn = formRelaunch.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
 
@@ -206,10 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch(`/api/campaigns/${campaignId}/relaunch`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json' 
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -226,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 10. Demande de retrait
+    // --- 14. Demande de retrait ---
     const formPayout = document.getElementById('formPayout');
     if (formPayout) {
         formPayout.addEventListener('submit', async (e) => {
@@ -240,10 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch(`/api/campaigns/${campaignId}/payouts`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json' 
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();

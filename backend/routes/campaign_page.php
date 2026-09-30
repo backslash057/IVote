@@ -31,10 +31,8 @@
                         </svg>
                     </div>
                     <div class="flex flex-col">
-                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">
-                            I<span class="text-primary">Vote</span>
-                        </span>
-                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider uppercase">Votes Monétisés</span>
+                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">IVote</span>
+                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider">Votes Monétisés</span>
                     </div>
                 </a>
 

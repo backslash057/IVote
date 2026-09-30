@@ -1,5 +1,4 @@
 <?php
-
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AuthController.php';
 
 $authController = new AuthController();
@@ -24,6 +23,9 @@ $user = $userSession['user'];
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+
     <!-- Tailwind CSS & Config -->
     <script src="/public/js/tailwindcss/tailwindcss.js"></script>
     <script src="/public/js/tailwindcss/tailwindcss.config.js"></script>
@@ -40,15 +42,14 @@ $user = $userSession['user'];
                 <!-- Logo -->
                 <a href="/" class="flex items-center gap-2.5">
                     <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-md">
+                        <!-- Lucide: vote / sparkles -->
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
                         </svg>
                     </div>
                     <div class="flex flex-col">
-                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">
-                            I<span class="text-primary">Vote</span>
-                        </span>
-                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider uppercase">Votes Monétisés</span>
+                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">IVote</span>
+                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider">Votes Monétisés</span>
                     </div>
                 </a>
 
@@ -61,7 +62,6 @@ $user = $userSession['user'];
 
                 <!-- User Session & Theme Controls -->
                 <div class="hidden md:flex items-center gap-3">
-                    <!-- Bouton Dark Mode -->
                     <button id="theme-toggle" class="p-2.5 rounded-xl border border-bordercustom hover:bg-surface-secondary text-fore transition" aria-label="Basculer le mode sombre">
                         <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="5"></circle>
@@ -83,7 +83,6 @@ $user = $userSession['user'];
                         Mes campagnes
                     </a>
 
-                    <!-- Profil & Déconnexion -->
                     <div class="flex items-center gap-2 pl-2 border-l border-bordercustom">
                         <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface-secondary border border-bordercustom text-xs">
                             <div class="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">
@@ -120,7 +119,6 @@ $user = $userSession['user'];
             </div>
         </div>
 
-        <!-- Mobile Drawer -->
         <div id="mobile-menu" class="hidden md:hidden bg-surface border-b border-bordercustom px-4 pt-2 pb-6 space-y-3">
             <a href="/" class="block py-2 text-sm font-medium text-fore-secondary">Accueil</a>
             <a href="/campaigns" class="block py-2 text-sm font-medium text-fore-secondary">Explorer les campagnes</a>
@@ -166,13 +164,54 @@ $user = $userSession['user'];
 
                     <div>
                         <label class="block text-xs font-bold text-fore mb-1.5">Date et Heure de Clôture (Optionnel)</label>
-                        <input type="datetime-local" name="date_cloture" class="w-full px-4 py-3 rounded-xl bg-surface border border-bordercustom text-xs sm:text-sm text-fore focus:ring-2 focus:ring-primary focus:outline-none transition">
+                        <input type="datetime-local" id="date_cloture" name="date_cloture" class="w-full px-4 py-3 rounded-xl bg-surface border border-bordercustom text-xs sm:text-sm text-fore focus:ring-2 focus:ring-primary focus:outline-none transition dark:[color-scheme:dark]">
+                        <p class="text-[11px] text-fore-secondary mt-1">Doit être au moins 5 minutes après l'instant présent.</p>
                     </div>
                 </div>
 
+                <!-- Widget Image avec Recadrage et Prévisualisation -->
                 <div>
-                    <label class="block text-xs font-bold text-fore mb-1.5">Bannière / Photo Principale</label>
-                    <input type="file" name="image" accept="image/*" class="w-full p-2.5 rounded-xl bg-surface border border-bordercustom text-xs text-fore-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary-dark cursor-pointer transition">
+                    <label class="block text-xs font-bold text-fore mb-1.5">Bannière / Photo Principale (Format 16:9 recommandé)</label>
+                    <input type="file" id="imageInput" accept="image/jpeg,image/png,image/webp" class="hidden">
+                    
+                    <!-- Zone de drop / sélection -->
+                    <div id="uploadPlaceholder" class="border-2 border-dashed border-bordercustom hover:border-primary/60 bg-surface rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <span class="text-xs font-bold text-fore">Cliquez pour ajouter une photo</span>
+                        <span class="text-[11px] text-fore-secondary">JPG, PNG ou WEBP (Max. 5 Mo)</span>
+                    </div>
+
+                    <!-- Zone de prévisualisation de l'image recadrée -->
+                    <div id="previewContainer" class="hidden space-y-3">
+                        <div class="relative w-full aspect-video rounded-2xl overflow-hidden border border-bordercustom bg-surface">    
+                            <img id="imagePreview" src="" alt="Aperçu" class="w-full h-full object-cover">
+                            <div class="absolute bottom-3 right-3 flex items-center gap-2">
+                                <button type="button" id="btnChangeImage" class="px-3 py-1.5 bg-surface border border-bordercustom text-fore text-xs font-bold rounded-lg shadow-sm transition">
+                                    Changer
+                                </button>
+                                <button type="button" id="btnRemoveImage" class="p-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barre de progression d'envoi -->
+                    <div id="uploadProgressContainer" class="hidden mt-3 space-y-1.5">
+                        <div class="flex justify-between text-xs font-bold text-fore">
+                            <span id="uploadStatusText">Téléversement de l'image...</span>
+                            <span id="uploadPercent">0%</span>
+                        </div>
+                        <div class="w-full bg-surface h-2 rounded-full overflow-hidden border border-bordercustom">
+                            <div id="uploadProgressBar" class="bg-primary h-full w-0 transition-all duration-150"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Messages d'erreur et succès -->
@@ -196,6 +235,24 @@ $user = $userSession['user'];
 
         </div>
     </main>
+
+    <!-- Modal de Recadrage de l'image (Aspect Ratio 16:9) -->
+    <div id="cropModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div class="bg-surface rounded-3xl border border-bordercustom p-6 max-w-xl w-full space-y-4 shadow-2xl">
+            <h3 class="text-base font-bold text-fore">Ajuster et recadrer l'image (16:9)</h3>
+            <div class="w-full max-h-96 overflow-hidden rounded-xl bg-black">
+                <img id="cropImageTarget" class="max-w-full block" alt="Image à recadrer">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" id="btnCancelCrop" class="px-4 py-2 rounded-xl border border-bordercustom text-xs font-bold text-fore hover:bg-surface-secondary transition">
+                    Annuler
+                </button>
+                <button type="button" id="btnApplyCrop" class="px-5 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-md transition">
+                    Valider le recadrage
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="mt-auto border-t border-bordercustom bg-surface-secondary pt-12 pb-8 text-fore-secondary">
@@ -250,7 +307,10 @@ $user = $userSession['user'];
         </div>
     </footer>
 
-    <!-- Scripts -->
+    <!-- Cropper.js Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    
+    <!-- Scripts Applicatifs -->
     <script src="/public/js/theme_toggle.js"></script>
     <script src="/public/js/create-campaign.js"></script>
 </body>

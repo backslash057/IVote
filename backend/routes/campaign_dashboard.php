@@ -37,6 +37,7 @@ foreach ($candidates as $cand) {
     $catName = $cand['category_name'] ?? 'Sans Catégorie';
     $candidatesByCategory[$catName][] = $cand;
 }
+$candidateCount = count($candidates);
 ?>
 <!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
@@ -50,13 +51,20 @@ foreach ($candidates as $cand) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+
     <!-- Tailwind CSS & Config -->
     <script src="/public/js/tailwindcss/tailwindcss.js"></script>
     <script src="/public/js/tailwindcss/tailwindcss.config.js"></script>
 
     <link rel="stylesheet" href="/public/css/index.css">
 </head>
-<body class="antialiased selection:bg-blue-500 selection:text-white flex flex-col min-h-screen bg-surface" data-campaign-id="<?= (int)$campaign['campaign_id'] ?>">
+<body class="antialiased selection:bg-blue-500 selection:text-white flex flex-col min-h-screen bg-surface" 
+      data-campaign-id="<?= (int)$campaign['campaign_id'] ?>" 
+      data-candidates-count="<?= $candidateCount ?>"
+      data-campaign-status="<?= htmlspecialchars($campaign['computed_status'], ENT_QUOTES, 'UTF-8') ?>"
+      data-date-cloture="<?= $campaign['date_cloture'] ? date('c', strtotime($campaign['date_cloture'])) : '' ?>">
 
     <!-- Navbar -->
     <header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-bordercustom transition-colors duration-200">
@@ -71,10 +79,8 @@ foreach ($candidates as $cand) {
                         </svg>
                     </div>
                     <div class="flex flex-col">
-                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">
-                            I<span class="text-primary">Vote</span>
-                        </span>
-                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider uppercase">Votes Monétisés</span>
+                        <span class="text-2xl font-extrabold tracking-tight text-fore leading-none">IVote</span>
+                        <span class="text-[10px] font-semibold text-fore-secondary tracking-wider">Votes Monétisés</span>
                     </div>
                 </a>
 
@@ -87,7 +93,6 @@ foreach ($candidates as $cand) {
 
                 <!-- Actions: Dark Theme & Buttons -->
                 <div class="hidden md:flex items-center gap-3">
-                    <!-- Bouton Dark Mode -->
                     <button id="theme-toggle" class="p-2.5 rounded-xl border border-bordercustom hover:bg-surface-secondary text-fore transition" aria-label="Basculer le mode sombre">
                         <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="5"></circle>
@@ -150,21 +155,21 @@ foreach ($candidates as $cand) {
         
         <!-- HEADER DE LA CAMPAGNE AVEC PHOTO & ACTIONS -->
         <section class="relative rounded-3xl overflow-hidden bg-surface-secondary border border-bordercustom shadow-sm">
-            <div class="relative h-48 sm:h-64 w-full bg-surface group flex items-center justify-center overflow-hidden">
+            <div class="relative h-56 sm:h-72 w-full bg-surface group flex items-center justify-center overflow-hidden">
                 <?php if (!empty($campaign['image_url'])): ?>
-                    <img id="campaignBanner" src="<?= htmlspecialchars($campaign['image_url'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($campaign['title'], ENT_QUOTES, 'UTF-8') ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition duration-300">
+                    <img id="campaignBanner" src="<?= htmlspecialchars($campaign['image_url'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($campaign['title'], ENT_QUOTES, 'UTF-8') ?>" class="w-full h-full object-cover opacity-85 group-hover:opacity-60 transition duration-300">
                 <?php else: ?>
                     <div class="flex flex-col items-center justify-center text-fore-secondary p-4 text-center">
                         <svg class="w-12 h-12 mb-2 opacity-30 text-fore" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
-                        <span class="text-xs font-medium opacity-60">Aucune photo de couverture</span>
+                        <span class="text-xs font-medium opacity-60">Aucune photo (Format 16:9)</span>
                     </div>
                 <?php endif; ?>
 
                 <button onclick="toggleModal('photoModal', true)" class="absolute inset-0 flex items-center justify-center gap-2 text-white bg-black/50 opacity-0 group-hover:opacity-100 transition duration-200 font-bold text-xs sm:text-sm cursor-pointer">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Changer la photo
+                    Changer l'affiche (16:9)
                 </button>
             </div>
 
@@ -196,7 +201,7 @@ foreach ($candidates as $cand) {
                     </div>
                 </div>
 
-                <!-- Boutons d'actions rapides -->
+                <!-- Actions de statut -->
                 <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                     <button onclick="toggleModal('editCampaignModal', true)" class="px-3.5 py-2 rounded-xl bg-surface border border-bordercustom hover:bg-surface-secondary text-fore text-xs font-bold flex items-center gap-1.5 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -226,28 +231,32 @@ foreach ($candidates as $cand) {
 
         <!-- STATS CARDS -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="p-5 rounded-2xl bg-surface-secondary border border-bordercustom shadow-sm">
-                <span class="text-xs font-semibold uppercase text-fore-secondary">Total Recettes</span>
-                <div class="text-2xl font-extrabold font-mono text-fore mt-2"><?= formatFCFA($stats['totalRevenue']) ?></div>
-                <div class="text-xs text-fore-secondary mt-1"><?= number_format($stats['totalVotes']) ?> votes comptabilisés</div>
-            </div>
-
-            <div class="p-5 rounded-2xl bg-surface-secondary border border-primary/40 shadow-sm">
-                <span class="text-xs font-bold uppercase text-primary">Solde Net Retirable (90%)</span>
-                <div class="text-2xl font-extrabold font-mono text-primary mt-2"><?= formatFCFA($stats['availableBalance']) ?></div>
-                <div class="text-xs text-fore-secondary mt-1">Disponible pour versement Mobile Money</div>
-            </div>
-
+            <!-- 1. Participants -->
             <div class="p-5 rounded-2xl bg-surface-secondary border border-bordercustom shadow-sm">
                 <span class="text-xs font-semibold uppercase text-fore-secondary">Participants</span>
-                <div class="text-2xl font-extrabold font-mono text-fore mt-2"><?= count($candidates) ?> candidats</div>
-                <div class="text-xs text-fore-secondary mt-1"><?= count($categories) ?> catégorie(s)</div>
+                <div class="text-2xl font-extrabold font-mono text-fore mt-2"><?= $candidateCount ?> candidats</div>
+                <div class="text-xs text-fore-secondary mt-1"><?= count($categories) ?> catégorie(s) configurée(s)</div>
             </div>
 
+            <!-- 2. Total Votes -->
             <div class="p-5 rounded-2xl bg-surface-secondary border border-bordercustom shadow-sm">
-                <span class="text-xs font-semibold uppercase text-fore-secondary">Frais Plateforme (10%)</span>
-                <div class="text-2xl font-extrabold font-mono text-fore-secondary mt-2"><?= formatFCFA($stats['platformFee']) ?></div>
-                <div class="text-xs text-fore-secondary mt-1">Infrastructure et télécoms</div>
+                <span class="text-xs font-semibold uppercase text-fore-secondary">Total Votes</span>
+                <div class="text-2xl font-extrabold font-mono text-fore mt-2"><?= number_format($stats['totalVotes'], 0, ',', ' ') ?></div>
+                <div class="text-xs text-fore-secondary mt-1">Votes enregistrés au total</div>
+            </div>
+
+            <!-- 3. Total Recette (90%) -->
+            <div class="p-5 rounded-2xl bg-surface-secondary border border-bordercustom shadow-sm">
+                <span class="text-xs font-semibold uppercase text-fore-secondary">Total Recette (90%)</span>
+                <div class="text-2xl font-extrabold font-mono text-fore mt-2"><?= formatFCFA($stats['netRevenue']) ?></div>
+                <div class="text-xs text-fore-secondary mt-1">Sur <?= formatFCFA($stats['totalRevenue']) ?> brut récoltés</div>
+            </div>
+
+            <!-- 4. Total Retirable -->
+            <div class="p-5 rounded-2xl bg-surface-secondary border border-primary/40 shadow-sm">
+                <span class="text-xs font-bold uppercase text-primary">Total Retirable</span>
+                <div class="text-2xl font-extrabold font-mono text-primary mt-2"><?= formatFCFA($stats['availableBalance']) ?></div>
+                <div class="text-xs text-fore-secondary mt-1">Disponible après déduction des retraits</div>
             </div>
         </section>
 
@@ -302,9 +311,9 @@ foreach ($candidates as $cand) {
                                                 <?= str_pad((string)$cand['candidate_number'], 2, '0', STR_PAD_LEFT) ?>
                                             </span>
                                             <?php if (!empty($cand['image_url'])): ?>
-                                                <img src="<?= htmlspecialchars($cand['image_url'], ENT_QUOTES, 'UTF-8') ?>" class="w-9 h-9 rounded-full object-cover shrink-0 border border-bordercustom">
+                                                <img src="<?= htmlspecialchars($cand['image_url'], ENT_QUOTES, 'UTF-8') ?>" class="w-9 h-12 rounded-lg object-cover shrink-0 border border-bordercustom">
                                             <?php else: ?>
-                                                <div class="w-9 h-9 rounded-full bg-surface-secondary border border-bordercustom flex items-center justify-center font-bold text-xs text-fore-secondary shrink-0">
+                                                <div class="w-9 h-12 rounded-lg bg-surface-secondary border border-bordercustom flex items-center justify-center font-bold text-xs text-fore-secondary shrink-0">
                                                     <?= strtoupper(substr($cand['name'], 0, 1)) ?>
                                                 </div>
                                             <?php endif; ?>
@@ -326,43 +335,6 @@ foreach ($candidates as $cand) {
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- Classements -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-bold text-fore">Classements par Catégories</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <?php foreach ($candidatesByCategory as $categoryName => $cands): ?>
-                        <div class="p-6 rounded-3xl bg-surface-secondary border border-bordercustom shadow-sm space-y-4">
-                            <h4 class="text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between border-b border-bordercustom pb-3">
-                                <span>Catégorie : <?= htmlspecialchars($categoryName, ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="text-fore-secondary font-normal"><?= count($cands) ?> participant(s)</span>
-                            </h4>
-
-                            <div class="space-y-3">
-                                <?php foreach ($cands as $rank => $cand): ?>
-                                    <div class="p-3.5 rounded-2xl bg-surface border border-bordercustom flex items-center justify-between gap-3 shadow-sm">
-                                        <div class="flex items-center gap-3">
-                                            <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs <?= $rank === 0 ? 'bg-amber-500 text-black' : 'bg-surface-secondary border border-bordercustom text-fore-secondary' ?>">
-                                                #<?= $rank + 1 ?>
-                                            </span>
-                                            <div>
-                                                <div class="font-bold text-xs sm:text-sm text-fore"><?= htmlspecialchars($cand['name'], ENT_QUOTES, 'UTF-8') ?></div>
-                                                <div class="text-[10px] text-fore-secondary font-mono"><?= number_format($cand['total_votes']) ?> votes (<?= $cand['percentage'] ?>%)</div>
-                                            </div>
-                                        </div>
-
-                                        <div class="w-24">
-                                            <div class="w-full h-1.5 bg-surface-secondary border border-bordercustom rounded-full overflow-hidden">
-                                                <div class="h-full bg-primary rounded-full transition-all duration-300" style="width: <?= (float)$cand['percentage'] ?>%"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -464,6 +436,48 @@ foreach ($candidates as $cand) {
             </div>
         </div>
 
+        <!-- Classements par Catégories -->
+        <div class="space-y-4">
+            <h3 class="text-lg font-bold text-fore">Classements par Catégories</h3>
+            <?php if (empty($candidates)): ?>
+                <div class="p-8 rounded-3xl bg-surface-secondary border border-bordercustom text-center text-fore-secondary text-xs">
+                    Aucun classement disponible pour le moment. Veuillez ajouter des candidats pour visualiser la répartition des votes.
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <?php foreach ($candidatesByCategory as $categoryName => $cands): ?>
+                        <div class="p-6 rounded-3xl bg-surface-secondary border border-bordercustom shadow-sm space-y-4">
+                            <h4 class="text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between border-b border-bordercustom pb-3">
+                                <span>Catégorie : <?= htmlspecialchars($categoryName, ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="text-fore-secondary font-normal"><?= count($cands) ?> participant(s)</span>
+                            </h4>
+
+                            <div class="space-y-3">
+                                <?php foreach ($cands as $rank => $cand): ?>
+                                    <div class="p-3.5 rounded-2xl bg-surface border border-bordercustom flex items-center justify-between gap-3 shadow-sm">
+                                        <div class="flex items-center gap-3">
+                                            <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs <?= $rank === 0 ? 'bg-amber-500 text-black' : 'bg-surface-secondary border border-bordercustom text-fore-secondary' ?>">
+                                                #<?= $rank + 1 ?>
+                                            </span>
+                                            <div>
+                                                <div class="font-bold text-xs sm:text-sm text-fore"><?= htmlspecialchars($cand['name'], ENT_QUOTES, 'UTF-8') ?></div>
+                                                <div class="text-[10px] text-fore-secondary font-mono"><?= number_format($cand['total_votes']) ?> votes (<?= $cand['percentage'] ?>%)</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="w-24">
+                                            <div class="w-full h-1.5 bg-surface-secondary border border-bordercustom rounded-full overflow-hidden">
+                                                <div class="h-full bg-primary rounded-full transition-all duration-300" style="width: <?= (float)$cand['percentage'] ?>%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </main>
 
     <!-- MODAL 1 : AJOUTER CANDIDAT -->
@@ -512,35 +526,78 @@ foreach ($candidates as $cand) {
                     <input type="text" name="theme" placeholder="Ex: Faculté de Médecine" class="w-full px-4 py-2.5 bg-surface-secondary border border-bordercustom rounded-xl text-fore text-xs focus:ring-2 focus:ring-primary focus:outline-none">
                 </div>
 
+                <!-- Widget Photo Candidat -->
                 <div>
-                    <label class="block text-xs font-bold text-fore mb-1">Photo du Candidat</label>
-                    <input type="file" name="image" accept="image/*" class="w-full p-2 bg-surface-secondary border border-bordercustom rounded-xl text-fore-secondary text-xs file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary-dark cursor-pointer">
+                    <label class="block text-xs font-bold text-fore mb-1">Photo du Candidat (Format 3:4)</label>
+                    <input type="file" id="candidateImageInput" accept="image/jpeg,image/png,image/webp" class="hidden">
+                    
+                    <div id="candidateUploadPlaceholder" class="border-2 border-dashed border-bordercustom hover:border-primary/60 bg-surface-secondary rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5">
+                        <span class="text-xs font-bold text-fore">Sélectionner une photo</span>
+                        <span class="text-[10px] text-fore-secondary">Format portrait 3:4 (JPG, PNG, WEBP)</span>
+                    </div>
+
+                    <div id="candidatePreviewContainer" class="hidden mt-2">
+                        <div class="relative w-32 aspect-[3/4] rounded-xl overflow-hidden border border-bordercustom mx-auto">
+                            <img id="candidateImagePreview" src="" class="w-full h-full object-cover">
+                            <button type="button" id="btnRemoveCandidateImage" class="absolute top-1 right-1 p-1 bg-red-500/90 text-white rounded-md text-xs">✕</button>
+                        </div>
+                    </div>
+
+                    <div id="candidateProgressContainer" class="hidden mt-2 space-y-1">
+                        <div class="flex justify-between text-[11px] font-bold text-fore">
+                            <span id="candidateUploadStatus">Envoi...</span>
+                            <span id="candidateUploadPercent">0%</span>
+                        </div>
+                        <div class="w-full bg-surface-secondary h-1.5 rounded-full overflow-hidden border border-bordercustom">
+                            <div id="candidateProgressBar" class="bg-primary h-full w-0 transition-all duration-150"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-bordercustom">
                     <button type="button" onclick="toggleModal('candidateModal', false)" class="px-4 py-2.5 bg-surface-secondary border border-bordercustom text-fore text-xs font-bold rounded-xl hover:bg-surface transition">Annuler</button>
-                    <button type="submit" class="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark transition shadow">Enregistrer</button>
+                    <button type="submit" id="submitCandidateBtn" class="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark transition shadow">Enregistrer</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL 2 : CHANGER LA PHOTO -->
+    <!-- MODAL 2 : CHANGER LA PHOTO DE LA CAMPAGNE (16:9) -->
     <div id="photoModal" class="fixed inset-0 bg-fore/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-surface border border-bordercustom rounded-3xl p-6 sm:p-8 w-full max-w-md space-y-4 shadow-2xl">
             <div class="flex items-center justify-between pb-3 border-b border-bordercustom">
-                <h3 class="text-base font-bold text-fore">Changer la bannière</h3>
+                <h3 class="text-base font-bold text-fore">Changer l'affiche (16:9)</h3>
                 <button type="button" onclick="toggleModal('photoModal', false)" class="text-fore-secondary hover:text-fore">✕</button>
             </div>
 
             <form id="formPhoto" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-fore mb-1.5">Sélectionnez une nouvelle image</label>
-                    <input type="file" name="campaign_image" accept="image/*" required class="w-full p-2 bg-surface-secondary border border-bordercustom rounded-xl text-fore-secondary text-xs file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary-dark cursor-pointer">
+                <input type="file" id="campaignImageInput" accept="image/jpeg,image/png,image/webp" class="hidden">
+                
+                <div id="campaignUploadPlaceholder" class="border-2 border-dashed border-bordercustom hover:border-primary/60 bg-surface-secondary rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2">
+                    <span class="text-xs font-bold text-fore">Cliquez pour choisir une nouvelle affiche</span>
+                    <span class="text-[11px] text-fore-secondary">Format paysage 16:9 (Max. 5 Mo)</span>
                 </div>
+
+                <div id="campaignPreviewContainer" class="hidden">
+                    <div class="relative w-full aspect-video rounded-2xl overflow-hidden border border-bordercustom mx-auto shadow-md">
+                        <img id="campaignImagePreview" src="" class="w-full h-full object-cover">
+                        <button type="button" id="btnRemoveCampaignImage" class="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md text-xs">✕</button>
+                    </div>
+                </div>
+
+                <div id="campaignProgressContainer" class="hidden space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold text-fore">
+                        <span id="campaignUploadStatus">Téléversement...</span>
+                        <span id="campaignUploadPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-surface-secondary h-1.5 rounded-full overflow-hidden border border-bordercustom">
+                        <div id="campaignProgressBar" class="bg-primary h-full w-0 transition-all duration-150"></div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2 pt-2 border-t border-bordercustom">
                     <button type="button" onclick="toggleModal('photoModal', false)" class="px-4 py-2.5 bg-surface-secondary border border-bordercustom text-fore text-xs font-bold rounded-xl hover:bg-surface">Annuler</button>
-                    <button type="submit" class="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark shadow">Mettre à jour</button>
+                    <button type="submit" id="submitCampaignPhotoBtn" class="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark shadow">Mettre à jour</button>
                 </div>
             </form>
         </div>
@@ -570,7 +627,7 @@ foreach ($candidates as $cand) {
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-fore mb-1">Date et heure de clôture</label>
-                        <input type="datetime-local" name="date_cloture" value="<?= $campaign['date_cloture'] ? date('Y-m-d\TH:i', strtotime($campaign['date_cloture'])) : '' ?>" class="w-full px-4 py-2.5 bg-surface-secondary border border-bordercustom rounded-xl text-fore text-xs focus:ring-2 focus:ring-primary focus:outline-none">
+                        <input type="datetime-local" id="edit_date_cloture" name="date_cloture" value="<?= $campaign['date_cloture'] ? date('Y-m-d\TH:i', strtotime($campaign['date_cloture'])) : '' ?>" class="w-full px-4 py-2.5 bg-surface-secondary border border-bordercustom rounded-xl text-fore text-xs focus:ring-2 focus:ring-primary focus:outline-none dark:[color-scheme:dark]">
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-bordercustom">
@@ -589,12 +646,12 @@ foreach ($candidates as $cand) {
                 <button type="button" onclick="toggleModal('relaunchModal', false)" class="text-fore-secondary hover:text-fore">✕</button>
             </div>
             
-            <p class="text-xs text-fore-secondary">Définissez une nouvelle date de clôture pour réactiver les votes en ligne.</p>
+            <p class="text-xs text-fore-secondary">Définissez une nouvelle date de clôture située au moins 5 minutes dans le futur.</p>
             
             <form id="formRelaunch" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-fore mb-1">Nouvelle date de clôture *</label>
-                    <input type="datetime-local" name="date_cloture" required class="w-full px-4 py-2.5 bg-surface-secondary border border-bordercustom rounded-xl text-fore text-xs focus:ring-2 focus:ring-primary focus:outline-none">
+                    <input type="datetime-local" id="relaunch_date_cloture" name="date_cloture" required class="w-full px-4 py-2.5 bg-surface-secondary border border-bordercustom rounded-xl text-fore text-xs focus:ring-2 focus:ring-primary focus:outline-none dark:[color-scheme:dark]">
                 </div>
                 <div class="flex justify-end gap-2 pt-2 border-t border-bordercustom">
                     <button type="button" onclick="toggleModal('relaunchModal', false)" class="px-4 py-2.5 bg-surface-secondary border border-bordercustom text-fore text-xs font-bold rounded-xl hover:bg-surface">Annuler</button>
@@ -635,14 +692,86 @@ foreach ($candidates as $cand) {
                     <input type="tel" name="wallet_number" required placeholder="699001122" class="w-full px-4 py-2.5 bg-surface-secondary border border-bordercustom rounded-xl text-fore text-xs focus:ring-2 focus:ring-primary focus:outline-none">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-bordercustom">
-                    <button type="button" onclick="toggleModal('payoutModal', false)" class="px-4 py-2.5 bg-surface-secondary border border-bordercustom text-fore text-xs font-bold rounded-xl hover:bg-surface">Annuler</button>
-                    <button type="submit" class="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark shadow">Confirmer le Retrait</button>
+                    <button type="button" onclick="toggleModal('payoutModal', false)" class="px-4 py-2.5 bg-surface-secondary border border-bordercustom text-fore text-xs font-bold rounded-xl hover:bg-surface transition">Annuler</button>
+                    <button type="submit" class="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark shadow transition">Confirmer le Retrait</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- MODAL GÉNÉRIQUE DE RECADRAGE -->
+    <div id="genericCropModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div class="bg-surface rounded-3xl border border-bordercustom p-6 max-w-lg w-full space-y-4 shadow-2xl">
+            <h3 class="text-base font-bold text-fore" id="genericCropTitle">Recadrer la photo</h3>
+            <div class="w-full max-h-96 overflow-hidden rounded-xl bg-black">
+                <img id="genericCropTarget" class="max-w-full block" alt="Image à recadrer">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" id="btnCancelGenericCrop" class="px-4 py-2 rounded-xl border border-bordercustom text-xs font-bold text-fore hover:bg-surface-secondary transition">
+                    Annuler
+                </button>
+                <button type="button" id="btnApplyGenericCrop" class="px-5 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-md transition">
+                    Valider le recadrage
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto border-t border-bordercustom bg-surface-secondary pt-12 pb-8 text-fore-secondary">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
+                
+                <div class="space-y-4 md:col-span-1">
+                    <div class="font-display flex items-center gap-2 text-xl font-bold text-fore">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>    
+                        </span>
+                        IVote
+                    </div>
+                    <p class="text-xs leading-relaxed text-fore-secondary">
+                        La plateforme moderne pour vos concours, élections et votes en ligne sécurisés et en temps réel.
+                    </p>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-fore">Navigation</h3>
+                    <ul class="mt-4 space-y-2 text-xs">
+                        <li><a href="/" class="transition-colors hover:text-primary">Accueil</a></li>
+                        <li><a href="/campaigns" class="transition-colors hover:text-primary">Explorer les campagnes</a></li>
+                        <li><a href="/dashboard" class="transition-colors hover:text-primary">Espace organisateur</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-fore">Légal</h3>
+                    <ul class="mt-4 space-y-2 text-xs">
+                        <li><a href="#" class="transition-colors hover:text-primary">Conditions d'utilisation</a></li>
+                        <li><a href="#" class="transition-colors hover:text-primary">Politique de confidentialité</a></li>
+                        <li><a href="#" class="transition-colors hover:text-primary">Mentions légales</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-fore">Support</h3>
+                    <ul class="mt-4 space-y-2 text-xs">
+                        <li><a href="mailto:support@ivote.com" class="text-primary hover:underline">support@ivote.com</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            
+            <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-bordercustom pt-6 text-xs text-fore-secondary sm:flex-row">
+                <p>&copy; 2026 IVote. Tous droits réservés.</p>
+                <p>Votez en toute sécurité.</p>
+            </div>
+        </div>
+    </footer>
+
     <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="/public/js/theme_toggle.js"></script>
     <script src="/public/js/campaign_dashboard.js"></script>
 </body>

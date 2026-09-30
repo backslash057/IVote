@@ -11,7 +11,7 @@ try {
 ?>
 
 <!DOCTYPE html>
-<html lang="fr" class="scroll-smooth">
+<html lang="fr" class="scroll-smooth scroll-pt-20">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -232,10 +232,18 @@ try {
     <!-- Popular Campaigns -->
     <section id="campaigns" class="py-16 bg-surface-secondary border-t border-bordercustom">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="mb-10 text-center sm:text-left">
-                <span class="text-xs font-extrabold uppercase tracking-widest text-primary">En vedette</span>
-                <h2 class="text-3xl font-extrabold text-fore mt-1">Campagnes Populaires</h2>
-                <p class="text-xs text-fore-secondary mt-1">Soutenez vos candidats favoris dès maintenant.</p>
+            <div class="mb-10    flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                    <span class="text-xs font-extrabold uppercase tracking-widest text-primary">En vedette</span>
+                    <h2 class="text-3xl font-extrabold text-fore mt-1">Campagnes Populaires</h2>
+                    <p class="text-xs text-fore-secondary mt-1">Soutenez vos candidats favoris dès maintenant.</p>
+                </div>
+                <a href="/campaigns" class="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-dark transition">
+                    <span>Voir tout</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
             </div>
 
             <?php if (!empty($popularCampaigns)): ?>

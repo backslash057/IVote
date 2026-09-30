@@ -68,6 +68,7 @@ class CampaignController extends BaseController {
     public function myCampaigns(): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
@@ -193,6 +194,7 @@ class CampaignController extends BaseController {
     public function dashboard(string|int $id): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
@@ -261,6 +263,14 @@ class CampaignController extends BaseController {
         $stmtPo->execute([$campaignId]);
         $payoutRequests = $stmtPo->fetchAll(PDO::FETCH_ASSOC);
 
+        // Déduction des retraits validés et en cours (aligné avec PayoutController)
+        $stmtPay = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status != 'rejected'");
+        $stmtPay->execute([$campaignId]);
+        $totalRequestedPayouts = (int)$stmtPay->fetchColumn();
+
+        $netRevenue = (int)round($totalRevenue * 0.90);
+        $availableBalance = max(0, $netRevenue - $totalRequestedPayouts);
+
         return [
             'success' => true,
             'data' => [
@@ -270,10 +280,10 @@ class CampaignController extends BaseController {
                 'transactions' => $transactions,
                 'payoutRequests' => $payoutRequests,
                 'stats' => [
-                    'totalVotes' => $totalVotes,
-                    'totalRevenue' => $totalRevenue,
-                    'platformFee' => (int)round($totalRevenue * 0.10),
-                    'availableBalance' => (int)round($totalRevenue * 0.90)
+                    'totalVotes' => (int)$totalVotes,
+                    'totalRevenue' => (int)$totalRevenue,
+                    'netRevenue' => $netRevenue,
+                    'availableBalance' => $availableBalance
                 ]
             ]
         ];
@@ -285,6 +295,7 @@ class CampaignController extends BaseController {
     public function create(): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
@@ -292,11 +303,36 @@ class CampaignController extends BaseController {
         $title = trim($data['title'] ?? '');
         $description = trim($data['description'] ?? '');
         $pricePerVote = isset($data['price_per_vote']) ? (int)$data['price_per_vote'] : 100;
-        $dateCloture = !empty($data['date_cloture']) ? $data['date_cloture'] : null;
+        $dateCloture = !empty($data['date_cloture']) ? trim($data['date_cloture']) : null;
 
         if (!$title || !$description) {
             http_response_code(400);
             return ['success' => false, 'message' => 'Le titre et la description sont obligatoires.'];
+        }
+
+        if ($pricePerVote < 50) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le prix par vote minimum est de 50 FCFA.'];
+        }
+
+        if ($dateCloture !== null) {
+            $timestampCloture = strtotime($dateCloture);
+            $minTimestamp = time() + 300;
+
+            if ($timestampCloture === false) {
+                http_response_code(400);
+                return ['success' => false, 'message' => 'Le format de la date de clôture est invalide.'];
+            }
+
+            if ($timestampCloture < $minTimestamp) {
+                http_response_code(400);
+                return [
+                    'success' => false, 
+                    'message' => 'La date de clôture ne peut pas être dans le passé et doit être située au moins 5 minutes après l\'instant présent.'
+                ];
+            }
+
+            $dateCloture = date('Y-m-d H:i:s', $timestampCloture);
         }
 
         $upload = $this->handleFileUpload('image', 'camp_');
@@ -325,6 +361,7 @@ class CampaignController extends BaseController {
     public function update(string|int $id): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
@@ -333,16 +370,41 @@ class CampaignController extends BaseController {
         $title = trim($data['title'] ?? '');
         $description = trim($data['description'] ?? '');
         $pricePerVote = (int)($data['price_per_vote'] ?? 100);
-        $dateCloture = !empty($data['date_cloture']) ? $data['date_cloture'] : null;
+        $dateCloture = !empty($data['date_cloture']) ? trim($data['date_cloture']) : null;
 
-        if ($campaignId <= 0 || empty($title)) {
+        if ($campaignId <= 0 || empty($title) || empty($description)) {
             http_response_code(400);
-            return ['success' => false, 'message' => 'Données invalides.'];
+            return ['success' => false, 'message' => 'Le titre et la description sont obligatoires.'];
+        }
+
+        if ($pricePerVote < 50) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le prix par vote minimum est de 50 FCFA.'];
         }
 
         if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
             http_response_code(403);
             return ['success' => false, 'message' => 'Action non autorisée.'];
+        }
+
+        if ($dateCloture !== null) {
+            $timestampCloture = strtotime($dateCloture);
+            $minTimestamp = time() + 300;
+
+            if ($timestampCloture === false) {
+                http_response_code(400);
+                return ['success' => false, 'message' => 'Le format de la date de clôture est invalide.'];
+            }
+
+            if ($timestampCloture < $minTimestamp) {
+                http_response_code(400);
+                return [
+                    'success' => false, 
+                    'message' => 'La date de clôture doit être située au moins 5 minutes après l\'instant présent.'
+                ];
+            }
+
+            $dateCloture = date('Y-m-d H:i:s', $timestampCloture);
         }
 
         $stmt = $this->db->prepare("
@@ -361,6 +423,7 @@ class CampaignController extends BaseController {
     public function updateStatus(string|int $id): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
@@ -379,6 +442,29 @@ class CampaignController extends BaseController {
         }
 
         if ($targetAction === 'publish') {
+            // Vérification de présence d'au moins un candidat
+            $candCheck = $this->db->prepare("SELECT COUNT(*) FROM Candidate WHERE campaign_id = ?");
+            $candCheck->execute([$campaignId]);
+            $candidateCount = (int)$candCheck->fetchColumn();
+
+            if ($candidateCount === 0) {
+                http_response_code(400);
+                return ['success' => false, 'message' => 'Impossible de publier une campagne sans aucun candidat.'];
+            }
+
+            // Vérification si la date de clôture actuelle n'est pas déjà passée
+            $campCheck = $this->db->prepare("SELECT date_cloture FROM Campaign WHERE campaign_id = ?");
+            $campCheck->execute([$campaignId]);
+            $currentDateCloture = $campCheck->fetchColumn();
+
+            if ($currentDateCloture !== null && strtotime($currentDateCloture) <= time()) {
+                http_response_code(400);
+                return [
+                    'success' => false, 
+                    'message' => 'La date de clôture actuelle est dépassée. Veuillez modifier ou relancer la campagne avec une date future avant de publier.'
+                ];
+            }
+
             $stmt = $this->db->prepare("UPDATE Campaign SET is_draft = 0 WHERE campaign_id = ? AND organiser_id = ?");
             $stmt->execute([$campaignId, (int)$user['user_id']]);
         } else {
@@ -395,22 +481,41 @@ class CampaignController extends BaseController {
     public function relaunch(string|int $id): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
         $campaignId = (int)$id;
         $data = $this->getRequestData();
-        $newEndDate = $data['date_cloture'] ?? null;
+        $newEndDate = !empty($data['date_cloture']) ? trim($data['date_cloture']) : null;
 
         if ($campaignId <= 0 || empty($newEndDate)) {
             http_response_code(400);
-            return ['success' => false, 'message' => 'Date de clôture invalide.'];
+            return ['success' => false, 'message' => 'Une date de clôture est obligatoire pour relancer la campagne.'];
         }
 
         if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
             http_response_code(403);
             return ['success' => false, 'message' => 'Action non autorisée.'];
         }
+
+        $timestampCloture = strtotime($newEndDate);
+        $minTimestamp = time() + 300;
+
+        if ($timestampCloture === false) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le format de la date de clôture est invalide.'];
+        }
+
+        if ($timestampCloture < $minTimestamp) {
+            http_response_code(400);
+            return [
+                'success' => false, 
+                'message' => 'La date de clôture doit être située au moins 5 minutes après l\'instant présent.'
+            ];
+        }
+
+        $newEndDate = date('Y-m-d H:i:s', $timestampCloture);
 
         $stmt = $this->db->prepare("
             UPDATE Campaign 
@@ -428,6 +533,7 @@ class CampaignController extends BaseController {
     public function updatePhoto(string|int $id): array {
         $user = $this->requireAuth();
         if (!$user) {
+            http_response_code(401);
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
 
