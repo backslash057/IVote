@@ -63,7 +63,8 @@ class _RevenuesPageState extends State<RevenuesPage> {
             ),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -83,11 +84,17 @@ class _RevenuesPageState extends State<RevenuesPage> {
                   const SizedBox(height: 16),
                   Text(
                     'Demande de Retrait',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface),
                   ),
                   Text(
                     campaign['title'] ?? '',
-                    style: TextStyle(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 14),
 
@@ -101,15 +108,25 @@ class _RevenuesPageState extends State<RevenuesPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Solde Retirable :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        Text('${_formatNumber(available)} FCFA', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.greenAccent)),
+                        const Text('Solde Retirable :',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('${_formatNumber(available)} FCFA',
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.greenAccent)),
                       ],
                     ),
                   ),
                   const SizedBox(height: 14),
 
                   // Montant
-                  Text('Montant à retirer (FCFA) *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Montant à retirer (FCFA) *',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: amountCtrl,
@@ -119,44 +136,65 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
                       hintText: 'Ex: 25000',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
 
                   // Méthode de paiement
-                  Text('Opérateur Mobile Money *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Opérateur Mobile Money *',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
                       Expanded(
                         child: InkWell(
-                          onTap: () => setModalState(() => paymentMethod = 'mtn_momo'),
+                          onTap: () =>
+                              setModalState(() => paymentMethod = 'mtn_momo'),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             decoration: BoxDecoration(
-                              color: paymentMethod == 'mtn_momo' ? theme.colorScheme.primary.withOpacity(0.1) : theme.colorScheme.surfaceContainerHighest,
+                              color: paymentMethod == 'mtn_momo'
+                                  ? theme.colorScheme.primary.withOpacity(0.1)
+                                  : theme.colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: paymentMethod == 'mtn_momo' ? theme.colorScheme.primary : theme.colorScheme.outline),
+                              border: Border.all(
+                                  color: paymentMethod == 'mtn_momo'
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.outline),
                             ),
                             alignment: Alignment.center,
-                            child: const Text('MTN MoMo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            child: const Text('MTN MoMo',
+                                style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: InkWell(
-                          onTap: () => setModalState(() => paymentMethod = 'orange_money'),
+                          onTap: () => setModalState(
+                              () => paymentMethod = 'orange_money'),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             decoration: BoxDecoration(
-                              color: paymentMethod == 'orange_money' ? theme.colorScheme.primary.withOpacity(0.1) : theme.colorScheme.surfaceContainerHighest,
+                              color: paymentMethod == 'orange_money'
+                                  ? theme.colorScheme.primary.withOpacity(0.1)
+                                  : theme.colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: paymentMethod == 'orange_money' ? theme.colorScheme.primary : theme.colorScheme.outline),
+                              border: Border.all(
+                                  color: paymentMethod == 'orange_money'
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.outline),
                             ),
                             alignment: Alignment.center,
-                            child: const Text('Orange Money', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            child: const Text('Orange Money',
+                                style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ),
@@ -164,7 +202,11 @@ class _RevenuesPageState extends State<RevenuesPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  Text('Nom complet du titulaire du compte *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Nom complet du titulaire du compte *',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: holderCtrl,
@@ -173,12 +215,17 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
                       hintText: 'Ex: Jean Dupont',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  Text('Numéro de téléphone du compte *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Numéro de téléphone du compte *',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: walletCtrl,
@@ -188,7 +235,8 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
                       hintText: 'Ex: 6XXXXXXXX',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -196,7 +244,10 @@ class _RevenuesPageState extends State<RevenuesPage> {
                   // Remarque
                   Text(
                     'Remarque : Les virements sont traités sous 24h ouvrées. La commission plateforme de 10% a déjà été déduite.',
-                    style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant, height: 1.4),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.4),
                   ),
                   const SizedBox(height: 18),
 
@@ -206,20 +257,27 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       onPressed: isProcessing
                           ? null
                           : () async {
-                              final amount = int.tryParse(amountCtrl.text.trim()) ?? 0;
+                              final amount =
+                                  int.tryParse(amountCtrl.text.trim()) ?? 0;
                               final holder = holderCtrl.text.trim();
                               final wallet = walletCtrl.text.trim();
 
-                              if (amount <= 0 || holder.isEmpty || wallet.isEmpty) {
+                              if (amount <= 0 ||
+                                  holder.isEmpty ||
+                                  wallet.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Veuillez remplir tous les champs.')),
+                                  const SnackBar(
+                                      content: Text(
+                                          'Veuillez remplir tous les champs.')),
                                 );
                                 return;
                               }
 
                               if (amount > available) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Montant supérieur au solde retirable.')),
+                                  const SnackBar(
+                                      content: Text(
+                                          'Montant supérieur au solde retirable.')),
                                 );
                                 return;
                               }
@@ -237,7 +295,8 @@ class _RevenuesPageState extends State<RevenuesPage> {
                                 Navigator.of(ctx).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(res['message'] ?? 'Demande de retrait initiée !'),
+                                    content: Text(res['message'] ??
+                                        'Demande de retrait initiée !'),
                                     backgroundColor: AppColors.greenAccent,
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -248,7 +307,9 @@ class _RevenuesPageState extends State<RevenuesPage> {
                                 Navigator.of(ctx).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(e.toString().replaceAll('Exception: ', '')),
+                                    content: Text(e
+                                        .toString()
+                                        .replaceAll('Exception: ', '')),
                                     backgroundColor: AppColors.redAccent,
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -258,11 +319,17 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: isProcessing
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Valider le Retrait', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Valider le Retrait',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -304,11 +371,14 @@ class _RevenuesPageState extends State<RevenuesPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: AppColors.redAccent, size: 40),
+                        const Icon(Icons.error_outline_rounded,
+                            color: AppColors.redAccent, size: 40),
                         const SizedBox(height: 12),
-                        Text('${snapshot.error}'.replaceAll('Exception: ', ''), textAlign: TextAlign.center),
+                        Text('${snapshot.error}'.replaceAll('Exception: ', ''),
+                            textAlign: TextAlign.center),
                         const SizedBox(height: 16),
-                        ElevatedButton(onPressed: _load, child: const Text('Réessayer')),
+                        ElevatedButton(
+                            onPressed: _load, child: const Text('Réessayer')),
                       ],
                     ),
                   ),
@@ -336,12 +406,19 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       children: [
                         Text(
                           'SOLDE DISPONIBLE AU RETRAIT',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurfaceVariant, letterSpacing: 0.5),
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              letterSpacing: 0.5),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${_formatNumber(globalAvailable)} FCFA',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.greenAccent),
+                          style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.greenAccent),
                         ),
                         const SizedBox(height: 10),
                         Divider(color: theme.colorScheme.outline),
@@ -349,8 +426,15 @@ class _RevenuesPageState extends State<RevenuesPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Revenus Bruts Collectés :', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
-                            Text('${_formatNumber(globalRevenue)} FCFA', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                            Text('Revenus Bruts Collectés :',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurfaceVariant)),
+                            Text('${_formatNumber(globalRevenue)} FCFA',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface)),
                           ],
                         ),
                       ],
@@ -360,7 +444,10 @@ class _RevenuesPageState extends State<RevenuesPage> {
 
                   Text(
                     'Vos Campagnes & Retraits',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 12),
 
@@ -374,12 +461,15 @@ class _RevenuesPageState extends State<RevenuesPage> {
                       child: Center(
                         child: Text(
                           'Aucune campagne pour le moment.',
-                          style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ),
                     )
                   else
-                    ...campaigns.map((camp) => _buildCompactCampaignCard(theme, camp)),
+                    ...campaigns
+                        .map((camp) => _buildCompactCampaignCard(theme, camp)),
                 ],
               );
             },
@@ -407,7 +497,10 @@ class _RevenuesPageState extends State<RevenuesPage> {
         collapsedShape: const Border(),
         title: Text(
           camp['title'] ?? '',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6.0),
@@ -415,58 +508,81 @@ class _RevenuesPageState extends State<RevenuesPage> {
             children: [
               Text(
                 'Retirable : ',
-                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
               ),
               Text(
                 '${_formatNumber(available)} F',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.greenAccent),
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.greenAccent),
               ),
               const Spacer(),
               Text(
                 'Brut: ${_formatNumber(totalRev)} F',
-                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
               ),
             ],
           ),
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ElevatedButton.icon(
-                  onPressed: available > 0 ? () => _showPayoutModal(camp) : null,
-                  icon: const Icon(Icons.account_balance_wallet_rounded, size: 16),
-                  label: const Text('Demander un retrait', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  onPressed:
+                      available > 0 ? () => _showPayoutModal(camp) : null,
+                  icon: const Icon(Icons.account_balance_wallet_rounded,
+                      size: 16),
+                  label: const Text('Demander un retrait',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.greenAccent,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Historique des retraits (${payouts.length})',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface),
                 ),
                 const SizedBox(height: 6),
                 if (payouts.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text('Aucune demande de retrait effectuée.', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                    child: Text('Aucune demande de retrait effectuée.',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant)),
                   )
                 else
                   ...payouts.map((p) {
                     final status = p['status'] ?? 'pending';
                     Color statusColor = AppColors.orangeAccent;
                     String statusLabel = 'En attente';
-                    if (status == 'completed') {
+                    if (status == 'approved') {
                       statusColor = AppColors.greenAccent;
-                      statusLabel = 'Validé';
+                      statusLabel = 'Approuvé · à payer';
+                    } else if (status == 'paid' || status == 'completed') {
+                      statusColor = AppColors.greenAccent;
+                      statusLabel = 'Payé';
                     } else if (status == 'rejected') {
                       statusColor = AppColors.redAccent;
                       statusLabel = 'Rejeté';
+                    } else if (status == 'under_review') {
+                      statusColor = theme.colorScheme.primary;
+                      statusLabel = 'En examen';
                     }
 
                     return Container(
@@ -482,17 +598,39 @@ class _RevenuesPageState extends State<RevenuesPage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${_formatNumber(p['amount_fcfa'] ?? 0)} FCFA', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                              Text('${p['payment_method'] == 'mtn_momo' ? 'MTN MoMo' : 'Orange Money'} • ${p['wallet_number']}', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                              Text(
+                                  '${_formatNumber(p['amount_fcfa'] ?? 0)} FCFA',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
+                              Text(
+                                  '${p['payment_method'] == 'mtn_momo' ? 'MTN MoMo' : 'Orange Money'} • ${p['wallet_number']}',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          theme.colorScheme.onSurfaceVariant)),
+                              if (status == 'rejected' &&
+                                  (p['rejection_reason'] ?? '')
+                                      .toString()
+                                      .isNotEmpty)
+                                Text('Motif : ${p['rejection_reason']}',
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.redAccent)),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: statusColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Text(statusLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor)),
+                            child: Text(statusLabel,
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: statusColor)),
                           ),
                         ],
                       ),
@@ -528,19 +666,26 @@ class _RevenuesPageState extends State<RevenuesPage> {
                   color: theme.colorScheme.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Icon(Icons.account_balance_wallet_rounded, size: 36, color: theme.colorScheme.primary),
+                child: Icon(Icons.account_balance_wallet_rounded,
+                    size: 36, color: theme.colorScheme.primary),
               ),
               const SizedBox(height: 20),
               Text(
                 'Revenus & Retraits',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface),
               ),
               const SizedBox(height: 8),
               Text(
                 'Connectez-vous pour consulter vos gains et effectuer des demandes de virement Mobile Money.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, height: 1.5, color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -554,12 +699,15 @@ class _RevenuesPageState extends State<RevenuesPage> {
                     if (res == true) _load();
                   },
                   icon: const Icon(Icons.login_rounded, size: 18),
-                  label: const Text('Se Connecter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('Se Connecter',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -575,11 +723,14 @@ class _RevenuesPageState extends State<RevenuesPage> {
                     if (res == true) _load();
                   },
                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                  label: const Text('Créer un compte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('Créer un compte',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.onSurface,
                     side: BorderSide(color: theme.colorScheme.outline),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),

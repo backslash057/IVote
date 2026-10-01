@@ -8,9 +8,9 @@ class PayoutController extends BaseController {
      * GET /api/campaigns/{id}/payouts
      */
     public function index(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -29,9 +29,9 @@ class PayoutController extends BaseController {
      * POST /api/campaigns/{id}/payouts
      */
     public function store(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -53,15 +53,15 @@ class PayoutController extends BaseController {
         }
 
         // Calculate available balance
-        $stmtRev = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Vote WHERE campaign_id = ?");
+        $stmtRev = $this->db->prepare("SELECT COALESCE(SUM(organizer_net_amount_fcfa), 0) FROM Vote WHERE campaign_id = ? AND payment_status = 'confirmed'");
         $stmtRev->execute([$campaignId]);
         $totalRevenue = (int)$stmtRev->fetchColumn();
 
-        $stmtPayouts = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status != 'rejected'");
+        $stmtPayouts = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status NOT IN ('rejected', 'cancelled')");
         $stmtPayouts->execute([$campaignId]);
         $totalRequestedPayouts = (int)$stmtPayouts->fetchColumn();
 
-        $availableBalance = (int)round($totalRevenue * 0.90) - $totalRequestedPayouts;
+        $availableBalance = $totalRevenue - $totalRequestedPayouts;
 
         if ($amount > $availableBalance) {
             http_response_code(400);
@@ -69,10 +69,12 @@ class PayoutController extends BaseController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO Payout (campaign_id, amount_fcfa, payment_method, account_holder, wallet_number, status) 
-            VALUES (?, ?, ?, ?, ?, 'pending')
+            INSERT INTO Payout (campaign_id, amount_fcfa, payment_method, account_holder, wallet_number, status, requested_by)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?)
         ");
-        $stmt->execute([$campaignId, $amount, $paymentMethod, $accountHolder, $walletNumber]);
+        $stmt->execute([$campaignId, $amount, $paymentMethod, $accountHolder, $walletNumber, (int)$user['user_id']]);
+
+        $this->writeAudit((int)$user['user_id'], 'payout_requested', 'payout', (int)$this->db->lastInsertId(), null, null, ['amount_fcfa' => $amount]);
 
         http_response_code(201);
         return ['success' => true, 'message' => 'Demande de retrait initiée avec succès.'];
@@ -83,9 +85,9 @@ class PayoutController extends BaseController {
      * Retourne la synthèse financière et l'historique des retraits par campagne
      */
     public function organizerRevenues(): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $userId = (int)$user['user_id'];
@@ -107,16 +109,19 @@ class PayoutController extends BaseController {
             $campId = (int)$camp['campaign_id'];
 
             // Total des revenus bruts
-            $stmtRev = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Vote WHERE campaign_id = ?");
+            $stmtRev = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Vote WHERE campaign_id = ? AND payment_status = 'confirmed'");
             $stmtRev->execute([$campId]);
             $totalRev = (int)$stmtRev->fetchColumn();
 
             // Total des retraits en cours ou validés (non rejetés)
-            $stmtPay = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status != 'rejected'");
+            $stmtNet = $this->db->prepare("SELECT COALESCE(SUM(organizer_net_amount_fcfa), 0) FROM Vote WHERE campaign_id = ? AND payment_status = 'confirmed'");
+            $stmtNet->execute([$campId]);
+            $netRev = (int)$stmtNet->fetchColumn();
+            $stmtPay = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status NOT IN ('rejected', 'cancelled')");
             $stmtPay->execute([$campId]);
             $requestedPayouts = (int)$stmtPay->fetchColumn();
 
-            $withdrawable = max(0, (int)round($totalRev * 0.90) - $requestedPayouts);
+            $withdrawable = max(0, $netRev - $requestedPayouts);
 
             // Historique des demandes de retrait
             $stmtList = $this->db->prepare("SELECT * FROM Payout WHERE campaign_id = ? ORDER BY created_at DESC");

@@ -26,7 +26,8 @@ class CampaignService {
       final List<dynamic> data = json['data'] ?? [];
       return data.map((item) => Campaign.fromJson(item)).toList();
     } else {
-      throw Exception('Erreur lors du chargement des campagnes (${response.statusCode})');
+      throw Exception(
+          'Erreur lors du chargement des campagnes (${response.statusCode})');
     }
   }
 
@@ -45,6 +46,110 @@ class CampaignService {
       throw Exception('Non authentifié. Veuillez vous reconnecter.');
     } else {
       throw Exception('Impossible de charger vos campagnes.');
+    }
+  }
+
+  Future<Map<String, dynamic>> createCampaign({
+    required String title,
+    required String description,
+    required int pricePerVote,
+    String? dateCloture,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'title': title,
+        'description': description,
+        'price_per_vote': pricePerVote,
+        if (dateCloture != null) 'date_cloture': dateCloture,
+      }),
+    );
+    final json = jsonDecode(response.body);
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        json['success'] == true) return json;
+    throw Exception(json['message'] ?? 'Impossible de créer la campagne.');
+  }
+
+  Future<void> deleteCampaign(int id) async {
+    final response = await http.delete(Uri.parse('$kBaseUrl/api/campaigns/$id'),
+        headers: await _getHeaders());
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 200 || json['success'] != true)
+      throw Exception(
+          json['message'] ?? 'Impossible de supprimer la campagne.');
+  }
+
+  Future<Map<String, dynamic>> addCategory(int campaignId, String name) async {
+    final response = await http.post(
+      Uri.parse('$kBaseUrl/api/campaigns/$campaignId/categories'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'name': name}),
+    );
+    final json = jsonDecode(response.body);
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        json['success'] == true) return json;
+    throw Exception(json['message'] ?? 'Impossible de créer la catégorie.');
+  }
+
+  Future<void> updateCategory(int id, String name) async {
+    final response = await http.put(Uri.parse('$kBaseUrl/api/categories/$id'),
+        headers: await _getHeaders(), body: jsonEncode({'name': name}));
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 200 || json['success'] != true) {
+      throw Exception(
+          json['message'] ?? 'Impossible de modifier la catégorie.');
+    }
+  }
+
+  Future<void> deleteCategory(int id) async {
+    final response = await http.delete(
+        Uri.parse('$kBaseUrl/api/categories/$id'),
+        headers: await _getHeaders());
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 200 || json['success'] != true) {
+      throw Exception(
+          json['message'] ?? 'Impossible de supprimer la catégorie.');
+    }
+  }
+
+  Future<void> updateCandidate({
+    required int candidateId,
+    required String name,
+    required int candidateNumber,
+    int? categoryId,
+    int? age,
+    String? theme,
+    String? description,
+    String? bio,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$kBaseUrl/api/candidates/$candidateId'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'name': name,
+        'candidate_number': candidateNumber,
+        'category_id': categoryId,
+        'age': age,
+        'theme': theme,
+        'description': description,
+        'bio': bio,
+      }),
+    );
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 200 || json['success'] != true) {
+      throw Exception(json['message'] ?? 'Impossible de modifier le candidat.');
+    }
+  }
+
+  Future<void> deleteCandidate(int id) async {
+    final response = await http.delete(
+        Uri.parse('$kBaseUrl/api/candidates/$id'),
+        headers: await _getHeaders());
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 200 || json['success'] != true) {
+      throw Exception(
+          json['message'] ?? 'Impossible de supprimer le candidat.');
     }
   }
 
@@ -77,7 +182,8 @@ class CampaignService {
     if (response.statusCode == 200 && json['success'] == true) {
       return json['data'];
     } else {
-      throw Exception(json['message'] ?? 'Impossible de charger les données de gestion.');
+      throw Exception(
+          json['message'] ?? 'Impossible de charger les données de gestion.');
     }
   }
 
@@ -109,7 +215,8 @@ class CampaignService {
   }
 
   /// Change le statut (publish ou close)
-  Future<Map<String, dynamic>> updateCampaignStatus(int id, String action) async {
+  Future<Map<String, dynamic>> updateCampaignStatus(
+      int id, String action) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('$kBaseUrl/api/campaigns/$id/status'),
@@ -121,11 +228,13 @@ class CampaignService {
     if (response.statusCode == 200 && json['success'] == true) {
       return json;
     }
-    throw Exception(json['message'] ?? 'Erreur lors de la mise à jour du statut.');
+    throw Exception(
+        json['message'] ?? 'Erreur lors de la mise à jour du statut.');
   }
 
   /// Relance une campagne
-  Future<Map<String, dynamic>> relaunchCampaign(int id, String dateCloture) async {
+  Future<Map<String, dynamic>> relaunchCampaign(
+      int id, String dateCloture) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('$kBaseUrl/api/campaigns/$id/relaunch'),
@@ -166,22 +275,26 @@ class CampaignService {
     request.fields['candidate_number'] = candidateNumber.toString();
     if (age != null) request.fields['age'] = age.toString();
     if (theme != null && theme.isNotEmpty) request.fields['theme'] = theme;
-    if (description != null && description.isNotEmpty) request.fields['description'] = description;
+    if (description != null && description.isNotEmpty)
+      request.fields['description'] = description;
     if (bio != null && bio.isNotEmpty) request.fields['bio'] = bio;
-    if (categoryId != null) request.fields['category_id'] = categoryId.toString();
+    if (categoryId != null)
+      request.fields['category_id'] = categoryId.toString();
     if (newCategoryName != null && newCategoryName.isNotEmpty) {
       request.fields['new_category_name'] = newCategoryName;
     }
 
     if (imageFile != null) {
-      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+      request.files
+          .add(await http.MultipartFile.fromPath('image', imageFile.path));
     }
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
     final json = jsonDecode(response.body);
 
-    if ((response.statusCode == 200 || response.statusCode == 201) && json['success'] == true) {
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        json['success'] == true) {
       return json;
     }
     throw Exception(json['message'] ?? 'Erreur lors de l\'ajout du candidat.');
@@ -199,7 +312,8 @@ class CampaignService {
     if (response.statusCode == 200 && json['success'] == true) {
       return json['data'];
     }
-    throw Exception(json['message'] ?? 'Impossible de charger les données financières.');
+    throw Exception(
+        json['message'] ?? 'Impossible de charger les données financières.');
   }
 
   /// Effectue une demande de retrait
@@ -223,7 +337,8 @@ class CampaignService {
     );
 
     final json = jsonDecode(response.body);
-    if ((response.statusCode == 200 || response.statusCode == 201) && json['success'] == true) {
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        json['success'] == true) {
       return json;
     }
     throw Exception(json['message'] ?? 'Erreur lors de la demande de retrait.');
@@ -252,7 +367,8 @@ class CampaignService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return data;
     } else {
-      throw Exception(data['message'] ?? 'Erreur lors de l\'enregistrement du vote.');
+      throw Exception(
+          data['message'] ?? 'Erreur lors de l\'enregistrement du vote.');
     }
   }
 }

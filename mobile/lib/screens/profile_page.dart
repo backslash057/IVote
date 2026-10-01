@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'auth/login_page.dart';
 import 'auth/signup_page.dart';
+import 'admin_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -71,14 +72,16 @@ class _ProfilePageState extends State<ProfilePage> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const Icon(Icons.check_circle_rounded,
+                  color: Colors.white, size: 20),
               const SizedBox(width: 8),
               Text(res['message'] ?? 'Profil mis à jour'),
             ],
           ),
           backgroundColor: AppColors.greenAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } else {
@@ -87,7 +90,8 @@ class _ProfilePageState extends State<ProfilePage> {
           content: Text(res['message'] ?? 'Erreur lors de la mise à jour'),
           backgroundColor: AppColors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -137,7 +141,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   color: theme.colorScheme.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Icon(Icons.person_rounded, size: 36, color: theme.colorScheme.primary),
+                child: Icon(Icons.person_rounded,
+                    size: 36, color: theme.colorScheme.primary),
               ),
               const SizedBox(height: 20),
               Text(
@@ -154,7 +159,10 @@ class _ProfilePageState extends State<ProfilePage> {
               Text(
                 'Accédez à votre tableau de bord, gérez vos scrutins et suivez vos retraits financiers en toute sécurité.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, height: 1.5, color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -168,12 +176,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     _loadData();
                   },
                   icon: const Icon(Icons.login_rounded, size: 18),
-                  label: const Text('Se Connecter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('Se Connecter',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -189,11 +200,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     _loadData();
                   },
                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                  label: const Text('Créer un compte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('Créer un compte',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.onSurface,
                     side: BorderSide(color: theme.colorScheme.outline),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -225,8 +239,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   radius: 30,
                   backgroundColor: theme.colorScheme.primary,
                   child: Text(
-                    (user['name'] ?? 'U').toString().substring(0, 1).toUpperCase(),
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                    (user['name'] ?? 'U')
+                        .toString()
+                        .substring(0, 1)
+                        .toUpperCase(),
+                    style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -257,7 +277,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () async {
                     await AuthService().logout();
                   },
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.redAccent),
+                  icon: const Icon(Icons.logout_rounded,
+                      color: AppColors.redAccent),
                   tooltip: 'Se déconnecter',
                 ),
               ],
@@ -265,11 +286,27 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: 20),
 
+          if (user['role'] == 'super_admin') ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const AdminPage())),
+                icon: const Icon(Icons.admin_panel_settings_outlined),
+                label: const Text('Ouvrir l’administration'),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
           // Statistiques Organisateur
           if (_stats != null) ...[
             Text(
               'Aperçu de vos activités',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface),
             ),
             const SizedBox(height: 10),
             Row(
@@ -278,7 +315,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: _buildStatCard(
                     theme,
                     title: 'CAMPAGNES',
-                    value: '${_stats!['active_campaigns']} / ${_stats!['total_campaigns']}',
+                    value:
+                        '${_stats!['active_campaigns']} / ${_stats!['total_campaigns']}',
                     subtitle: 'Actives / Total',
                     color: theme.colorScheme.primary,
                   ),
@@ -330,16 +368,22 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppColors.greenAccent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.account_balance_wallet_rounded, size: 16, color: AppColors.greenAccent),
+                        Icon(Icons.account_balance_wallet_rounded,
+                            size: 16, color: AppColors.greenAccent),
                         SizedBox(width: 6),
-                        Text('Retirable', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.greenAccent)),
+                        Text('Retirable',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.greenAccent)),
                       ],
                     ),
                   ),
@@ -352,7 +396,10 @@ class _ProfilePageState extends State<ProfilePage> {
           // Formulaire de modification du profil
           Text(
             'Modifier vos informations',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface),
           ),
           const SizedBox(height: 10),
           Container(
@@ -367,86 +414,113 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Nom ou Organisation', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Nom ou Organisation',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _nameController,
-                    style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 13, color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: theme.colorScheme.surface,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      prefixIcon: Icon(Icons.person_outline, size: 18, color: theme.colorScheme.onSurfaceVariant),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      prefixIcon: Icon(Icons.person_outline,
+                          size: 18, color: theme.colorScheme.onSurfaceVariant),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                   ),
                   const SizedBox(height: 14),
-
-                  Text('Adresse e-mail', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Adresse e-mail',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _emailController,
-                    style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 13, color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: theme.colorScheme.surface,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      prefixIcon: Icon(Icons.alternate_email, size: 18, color: theme.colorScheme.onSurfaceVariant),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      prefixIcon: Icon(Icons.alternate_email,
+                          size: 18, color: theme.colorScheme.onSurfaceVariant),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                     ),
-                    validator: (v) => (v == null || !v.contains('@')) ? 'Email valide requis' : null,
+                    validator: (v) => (v == null || !v.contains('@'))
+                        ? 'Email valide requis'
+                        : null,
                   ),
                   const SizedBox(height: 18),
-
                   Divider(color: theme.colorScheme.outline),
                   const SizedBox(height: 12),
                   Text(
                     'Changer le mot de passe (optionnel)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 10),
-
                   TextFormField(
                     controller: _currentPasswordController,
                     obscureText: true,
-                    style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 13, color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: theme.colorScheme.surface,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      prefixIcon: Icon(Icons.lock_open_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                      prefixIcon: Icon(Icons.lock_open_rounded,
+                          size: 18, color: theme.colorScheme.onSurfaceVariant),
                       hintText: 'Mot de passe actuel',
-                      hintStyle: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withOpacity(0.5)),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                     ),
                   ),
                   const SizedBox(height: 10),
-
                   TextFormField(
                     controller: _newPasswordController,
                     obscureText: true,
-                    style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 13, color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: theme.colorScheme.surface,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      prefixIcon: Icon(Icons.lock_outline_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                      prefixIcon: Icon(Icons.lock_outline_rounded,
+                          size: 18, color: theme.colorScheme.onSurfaceVariant),
                       hintText: 'Nouveau mot de passe',
-                      hintStyle: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withOpacity(0.5)),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   SizedBox(
                     height: 44,
                     child: ElevatedButton(
@@ -455,15 +529,19 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: _isSaving
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Enregistrer les modifications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          : const Text('Enregistrer les modifications',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   ),
                 ],
@@ -513,7 +591,8 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
+            style: TextStyle(
+                fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       ),

@@ -6,6 +6,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CategoryController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CandidateController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/VoteController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/PayoutController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AdminController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/NotificationController.php';
 
 class Route {
     public function __construct(
@@ -23,6 +25,11 @@ $urlpatterns = [
     new Route("/campaigns/{id}", "/routes/campaign_page.php", "GET"),
     new Route("/campaigns/{id}/dashboard", "/routes/campaign_dashboard.php", "GET"),
     new Route("/dashboard", "/routes/dashboard.php", "GET"),
+    new Route("/admin", "/routes/admin.php", "GET"),
+    new Route("/admin/notifications", "/routes/notifications.php", "GET"),
+    new Route("/notifications", "/routes/notifications.php", "GET"),
+    new Route("/admin/transactions.csv", "/routes/admin_export.php", "GET"),
+    new Route("/admin/payouts.csv", "/routes/admin_export.php", "GET"),
     new Route("/login", "/routes/auth/login.php", "GET"),
     new Route("/signup", "/routes/auth/signup.php", "GET"),
     new Route("/logout", "/routes/auth/logout.php", "GET"),
@@ -45,6 +52,7 @@ $urlpatterns = [
     new Route("/api/campaigns/{id}", "CampaignController@show", "GET"),
     new Route("/api/campaigns/{id}/dashboard", "CampaignController@dashboard", "GET"),
     new Route("/api/campaigns/{id}/update", "CampaignController@update", "POST"),
+    new Route("/api/campaigns/{id}", "CampaignController@delete", "DELETE"),
     new Route("/api/campaigns/{id}/status", "CampaignController@updateStatus", "POST"),
     new Route("/api/campaigns/{id}/relaunch", "CampaignController@relaunch", "POST"),
     new Route("/api/campaigns/{id}/update-photo", "CampaignController@updatePhoto", "POST"),
@@ -52,10 +60,14 @@ $urlpatterns = [
     // API: Categories
     new Route("/api/campaigns/{id}/categories", "CategoryController@index", "GET"),
     new Route("/api/campaigns/{id}/categories", "CategoryController@store", "POST"),
+    new Route("/api/categories/{id}", "CategoryController@delete", "DELETE"),
+    new Route("/api/categories/{id}", "CategoryController@update", "PUT"),
 
     // API: Candidates
     new Route("/api/campaigns/{id}/candidates", "CandidateController@index", "GET"),
     new Route("/api/campaigns/{id}/candidates", "CandidateController@store", "POST"),
+    new Route("/api/candidates/{id}", "CandidateController@update", "PUT"),
+    new Route("/api/candidates/{id}", "CandidateController@delete", "DELETE"),
 
     // API: Votes
     new Route("/api/campaigns/{id}/votes", "VoteController@index", "GET"),
@@ -65,6 +77,22 @@ $urlpatterns = [
     new Route("/api/campaigns/{id}/payouts", "PayoutController@index", "GET"),
     new Route("/api/campaigns/{id}/payouts", "PayoutController@store", "POST"),
     new Route("/api/organizer/revenues", "PayoutController@organizerRevenues", "GET"),
+
+    // API: Super administration
+    new Route("/api/admin/overview", "AdminController@overview", "GET"),
+    new Route("/api/admin/users", "AdminController@users", "GET"),
+    new Route("/api/admin/users/{id}/status", "AdminController@updateUserStatus", "POST"),
+    new Route("/api/admin/campaigns", "AdminController@campaigns", "GET"),
+    new Route("/api/admin/campaigns/{id}/moderate", "AdminController@moderateCampaign", "POST"),
+    new Route("/api/admin/payouts", "AdminController@payouts", "GET"),
+    new Route("/api/admin/payouts/{id}/review", "AdminController@reviewPayout", "POST"),
+    new Route("/api/admin/notifications", "AdminController@sendNotification", "POST"),
+
+    // API: Notifications
+    new Route("/api/notifications", "NotificationController@index", "GET"),
+    new Route("/api/notifications/unread-count", "NotificationController@unreadCount", "GET"),
+    new Route("/api/notifications/read-all", "NotificationController@markAllRead", "POST"),
+    new Route("/api/notifications/{id}/read", "NotificationController@markRead", "POST"),
 ];
 
 $requestUri = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';

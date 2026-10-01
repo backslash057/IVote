@@ -18,7 +18,11 @@ class CampaignController extends BaseController {
                        COALESCE(SUM(v.vote_count), 0) AS totalVotes,
                        GROUP_CONCAT(DISTINCT cat.name ORDER BY cat.category_id SEPARATOR ', ') AS categories,
                        CASE
-                           WHEN c.is_draft = 1 THEN 'draft'
+                           WHEN c.status = 'draft' THEN 'draft'
+                           WHEN c.status = 'pending_review' THEN 'pending_review'
+                           WHEN c.status = 'suspended' THEN 'suspended'
+                           WHEN c.status = 'archived' THEN 'archived'
+                           WHEN c.status = 'closed' THEN 'ended'
                            WHEN c.date_cloture IS NOT NULL AND c.date_cloture < NOW() THEN 'ended'
                            ELSE 'active'
                        END AS status
@@ -27,7 +31,7 @@ class CampaignController extends BaseController {
                 LEFT JOIN Category cat ON cat.campaign_id = c.campaign_id
                 LEFT JOIN Candidate cand ON cand.category_id = cat.category_id
                 LEFT JOIN Vote v ON v.candidate_id = cand.candidate_id
-                WHERE c.is_draft = 0
+                WHERE c.status = 'published'
                 GROUP BY c.campaign_id
                 ORDER BY c.campaign_id DESC";
 
@@ -50,7 +54,7 @@ class CampaignController extends BaseController {
                 LEFT JOIN Category cat ON cat.campaign_id = c.campaign_id
                 LEFT JOIN Candidate cand ON cand.category_id = cat.category_id
                 LEFT JOIN Vote v ON v.candidate_id = cand.candidate_id
-                WHERE c.is_draft = 0 AND (c.date_cloture IS NULL OR c.date_cloture >= NOW())
+                WHERE c.status = 'published' AND (c.date_cloture IS NULL OR c.date_cloture >= NOW())
                 GROUP BY c.campaign_id
                 ORDER BY totalVotes DESC
                 LIMIT :limit";
@@ -66,10 +70,9 @@ class CampaignController extends BaseController {
      * GET /api/my-campaigns
      */
     public function myCampaigns(): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $sql = "SELECT c.*,
@@ -78,7 +81,10 @@ class CampaignController extends BaseController {
                        COALESCE(SUM(v.vote_count), 0) AS totalVotes,
                        GROUP_CONCAT(DISTINCT cat.name ORDER BY cat.category_id SEPARATOR ', ') AS categories,
                        CASE
-                           WHEN c.is_draft = 1 THEN 'draft'
+                           WHEN c.status = 'draft' THEN 'draft'
+                           WHEN c.status = 'suspended' THEN 'suspended'
+                           WHEN c.status = 'archived' THEN 'archived'
+                           WHEN c.status = 'closed' THEN 'ended'
                            WHEN c.date_cloture IS NOT NULL AND c.date_cloture < NOW() THEN 'ended'
                            ELSE 'active'
                        END AS status
@@ -107,7 +113,11 @@ class CampaignController extends BaseController {
         $campaignStmt = $this->db->prepare(
             "SELECT c.*, u.name AS organizer_name,
                     CASE
-                        WHEN c.is_draft = 1 THEN 'draft'
+                        WHEN c.status = 'draft' THEN 'draft'
+                        WHEN c.status = 'pending_review' THEN 'pending_review'
+                        WHEN c.status = 'suspended' THEN 'suspended'
+                        WHEN c.status = 'archived' THEN 'archived'
+                        WHEN c.status = 'closed' THEN 'closed'
                         WHEN c.date_cloture IS NOT NULL AND c.date_cloture < NOW() THEN 'ended'
                         ELSE 'active'
                     END AS computed_status
@@ -121,6 +131,11 @@ class CampaignController extends BaseController {
         if (!$campaign) {
             http_response_code(404);
             return ['success' => false, 'message' => 'Campagne introuvable.'];
+        }
+
+        if (in_array($campaign['status'], ['suspended', 'archived', 'draft', 'pending_review'], true)) {
+            http_response_code(404);
+            return ['success' => false, 'message' => 'Cette campagne n’est pas disponible publiquement.'];
         }
 
         $candidateStmt = $this->db->prepare(
@@ -192,10 +207,9 @@ class CampaignController extends BaseController {
      * GET /api/campaigns/{id}/dashboard
      */
     public function dashboard(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -205,7 +219,11 @@ class CampaignController extends BaseController {
                    u.name AS organizer_name, 
                    u.email AS organizer_email,
                    CASE 
-                       WHEN c.is_draft = 1 THEN 'draft'
+                       WHEN c.status = 'draft' THEN 'draft'
+                       WHEN c.status = 'pending_review' THEN 'pending_review'
+                       WHEN c.status = 'suspended' THEN 'suspended'
+                       WHEN c.status = 'archived' THEN 'archived'
+                       WHEN c.status = 'closed' THEN 'closed'
                        WHEN c.date_cloture IS NOT NULL AND c.date_cloture < NOW() THEN 'closed'
                        ELSE 'live'
                    END AS computed_status
@@ -264,11 +282,13 @@ class CampaignController extends BaseController {
         $payoutRequests = $stmtPo->fetchAll(PDO::FETCH_ASSOC);
 
         // Déduction des retraits validés et en cours (aligné avec PayoutController)
-        $stmtPay = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status != 'rejected'");
+        $stmtNet = $this->db->prepare("SELECT COALESCE(SUM(organizer_net_amount_fcfa), 0) FROM Vote WHERE campaign_id = ? AND payment_status = 'confirmed'");
+        $stmtNet->execute([$campaignId]);
+        $netRevenue = (int)$stmtNet->fetchColumn();
+        $stmtPay = $this->db->prepare("SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE campaign_id = ? AND status NOT IN ('rejected', 'cancelled')");
         $stmtPay->execute([$campaignId]);
         $totalRequestedPayouts = (int)$stmtPay->fetchColumn();
 
-        $netRevenue = (int)round($totalRevenue * 0.90);
         $availableBalance = max(0, $netRevenue - $totalRequestedPayouts);
 
         return [
@@ -293,10 +313,9 @@ class CampaignController extends BaseController {
      * POST /api/campaigns
      */
     public function create(): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $data = $this->getRequestData();
@@ -356,13 +375,43 @@ class CampaignController extends BaseController {
     }
 
     /**
+     * DELETE /api/campaigns/{id}
+     */
+    public function delete(string|int $id): array {
+        $user = $this->requireOrganizer();
+        if (!$user) {
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
+        }
+
+        $campaignId = (int)$id;
+        if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
+            http_response_code(403);
+            return ['success' => false, 'message' => 'Action non autorisée.'];
+        }
+        if (!$this->isCampaignEditable($campaignId)) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Seule une campagne brouillon peut être supprimée.'];
+        }
+
+        $stmt = $this->db->prepare("SELECT (SELECT COUNT(*) FROM Vote WHERE campaign_id = ?) + (SELECT COUNT(*) FROM Payout WHERE campaign_id = ?)");
+        $stmt->execute([$campaignId, $campaignId]);
+        if ((int)$stmt->fetchColumn() > 0) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Une campagne ayant des votes ou des retraits ne peut pas être supprimée.'];
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM Campaign WHERE campaign_id = ? AND organiser_id = ?");
+        $stmt->execute([$campaignId, (int)$user['user_id']]);
+        return ['success' => true, 'message' => 'Campagne supprimée avec succès.'];
+    }
+
+    /**
      * POST /api/campaigns/{id}/update
      */
     public function update(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -385,6 +434,11 @@ class CampaignController extends BaseController {
         if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
             http_response_code(403);
             return ['success' => false, 'message' => 'Action non autorisée.'];
+        }
+
+        if (!$this->isCampaignEditable($campaignId)) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Une campagne publiée ne peut plus être modifiée.'];
         }
 
         if ($dateCloture !== null) {
@@ -421,10 +475,9 @@ class CampaignController extends BaseController {
      * POST /api/campaigns/{id}/status
      */
     public function updateStatus(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -439,6 +492,18 @@ class CampaignController extends BaseController {
         if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
             http_response_code(403);
             return ['success' => false, 'message' => 'Action non autorisée.'];
+        }
+
+        $stateStmt = $this->db->prepare("SELECT status FROM Campaign WHERE campaign_id = ?");
+        $stateStmt->execute([$campaignId]);
+        $currentStatus = $stateStmt->fetchColumn();
+        if ($targetAction === 'publish' && $currentStatus !== 'draft') {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Seule une campagne brouillon peut être publiée. Une campagne suspendue doit être restaurée par IVote.'];
+        }
+        if ($targetAction === 'close' && $currentStatus !== 'published') {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Seule une campagne publiée peut être clôturée.'];
         }
 
         if ($targetAction === 'publish') {
@@ -465,10 +530,10 @@ class CampaignController extends BaseController {
                 ];
             }
 
-            $stmt = $this->db->prepare("UPDATE Campaign SET is_draft = 0 WHERE campaign_id = ? AND organiser_id = ?");
+            $stmt = $this->db->prepare("UPDATE Campaign SET is_draft = 0, status = 'published' WHERE campaign_id = ? AND organiser_id = ?");
             $stmt->execute([$campaignId, (int)$user['user_id']]);
         } else {
-            $stmt = $this->db->prepare("UPDATE Campaign SET date_cloture = NOW() WHERE campaign_id = ? AND organiser_id = ?");
+            $stmt = $this->db->prepare("UPDATE Campaign SET date_cloture = NOW(), status = 'closed' WHERE campaign_id = ? AND organiser_id = ?");
             $stmt->execute([$campaignId, (int)$user['user_id']]);
         }
 
@@ -479,10 +544,9 @@ class CampaignController extends BaseController {
      * POST /api/campaigns/{id}/relaunch
      */
     public function relaunch(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -497,6 +561,18 @@ class CampaignController extends BaseController {
         if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
             http_response_code(403);
             return ['success' => false, 'message' => 'Action non autorisée.'];
+        }
+
+        $stateStmt = $this->db->prepare("SELECT status, date_cloture FROM Campaign WHERE campaign_id = ?");
+        $stateStmt->execute([$campaignId]);
+        $campaignState = $stateStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$campaignState || $campaignState['status'] === 'suspended') {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Une campagne suspendue ne peut pas être relancée. Contactez IVote.'];
+        }
+        if ($campaignState['status'] === 'draft' || ($campaignState['status'] === 'published' && (!$campaignState['date_cloture'] || strtotime($campaignState['date_cloture']) > time()))) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Seule une campagne clôturée peut être relancée.'];
         }
 
         $timestampCloture = strtotime($newEndDate);
@@ -519,7 +595,7 @@ class CampaignController extends BaseController {
 
         $stmt = $this->db->prepare("
             UPDATE Campaign 
-            SET is_draft = 0, date_cloture = ? 
+            SET is_draft = 0, status = 'published', date_cloture = ?
             WHERE campaign_id = ? AND organiser_id = ?
         ");
         $stmt->execute([$newEndDate, $campaignId, (int)$user['user_id']]);
@@ -531,10 +607,9 @@ class CampaignController extends BaseController {
      * POST /api/campaigns/{id}/update-photo
      */
     public function updatePhoto(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            http_response_code(401);
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -546,6 +621,11 @@ class CampaignController extends BaseController {
         if (!$this->verifyCampaignOwner($campaignId, (int)$user['user_id'])) {
             http_response_code(403);
             return ['success' => false, 'message' => 'Action non autorisée.'];
+        }
+
+        if (!$this->isCampaignEditable($campaignId)) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'La photo ne peut être modifiée qu’avant la publication.'];
         }
 
         $upload = $this->handleFileUpload('campaign_image', 'camp_');

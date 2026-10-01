@@ -124,9 +124,9 @@ $userEmail = htmlspecialchars($userSession['email'] ?? '', ENT_QUOTES, 'UTF-8');
                     <span>Se Déconnecter</span>
                 </button>
 
-                <a href="/dashboard" 
+                <a href="<?= (($userSession['role'] ?? '') === 'super_admin') ? '/admin' : '/dashboard' ?>"
                    class="w-full py-2.5 rounded-xl bg-surface hover:bg-surface-secondary border border-bordercustom text-fore font-semibold text-xs transition flex items-center justify-center gap-2 text-center block">
-                    Annuler et aller au tableau de bord
+                    Annuler et revenir à mon espace
                 </a>
             </form>
 

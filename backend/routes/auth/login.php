@@ -7,7 +7,7 @@ try {
     $userData = $controller->getAuthUser();
 
     if ($userData) {
-        header("Location: /dashboard");
+        header("Location: " . (($userData['role'] ?? '') === 'super_admin' ? '/admin' : '/dashboard'));
         exit;
     }
 } catch (Exception $e) {
@@ -77,10 +77,10 @@ try {
                 
                 <div>
                     <h1 class="text-2xl font-extrabold text-fore tracking-tight">
-                        Espace Organisateur
+                        Connexion à IVote
                     </h1>
                     <p class="text-xs text-fore-secondary mt-1">
-                        Connectez-vous pour piloter vos campagnes et retraits
+                        Connectez-vous pour accéder à votre espace IVote
                     </p>
                 </div>
             </div>

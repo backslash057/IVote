@@ -1,3 +1,8 @@
+<?php
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AuthController.php';
+$viewer = (new AuthController())->getAuthUser();
+$isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
+?>
 <!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
@@ -40,7 +45,7 @@
                 <nav class="hidden md:flex items-center gap-8">
                     <a href="/" class="text-sm font-medium text-fore-secondary hover:text-fore transition">Accueil</a>
                     <a href="/campaigns" class="text-sm font-medium text-fore-secondary hover:text-fore transition">Explorer les campagnes</a>
-                    <a href="/dashboard" class="text-sm font-medium text-fore-secondary hover:text-fore transition">Espace organisateur</a>
+                    <a href="<?= $isSuperAdmin ? '/admin' : '/dashboard' ?>" class="text-sm font-medium text-fore-secondary hover:text-fore transition"><?= $isSuperAdmin ? 'Administration' : 'Espace organisateur' ?></a>
                 </nav>
 
                 <!-- Actions: Dark Theme & Buttons -->
@@ -67,8 +72,8 @@
                         Toutes les campagnes
                     </a>
 
-                    <a href="/dashboard" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md transition transform hover:-translate-y-0.5">
-                        <span>Espace Organisateur</span>
+                    <a href="<?= $isSuperAdmin ? '/admin' : '/dashboard' ?>" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md transition transform hover:-translate-y-0.5">
+                        <span><?= $isSuperAdmin ? 'Administration' : 'Espace Organisateur' ?></span>
                     </a>
                 </div>
 
@@ -94,7 +99,7 @@
         <div id="mobile-menu" class="hidden md:hidden bg-surface border-b border-bordercustom px-4 pt-2 pb-6 space-y-3">
             <a href="/" class="block py-2 text-sm font-medium text-fore-secondary">Accueil</a>
             <a href="/campaigns" class="block py-2 text-sm font-semibold text-primary">Explorer les campagnes</a>
-            <a href="/dashboard" class="block py-2 text-sm font-medium text-fore-secondary">Espace organisateur</a>
+            <a href="<?= $isSuperAdmin ? '/admin' : '/dashboard' ?>" class="block py-2 text-sm font-medium text-fore-secondary"><?= $isSuperAdmin ? 'Administration' : 'Espace organisateur' ?></a>
         </div>
     </header>
 
@@ -261,12 +266,12 @@
                         <p class="text-xs text-fore-secondary mt-1">Créez votre propre campagne de vote monétisée et recevez vos fonds directement.</p>
                     </div>
                 </div>
-                <a href="/campaigns/new" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-md transition transform hover:-translate-y-0.5 shrink-0">
+                <?php if (!$isSuperAdmin): ?><a href="/campaigns/new" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-md transition transform hover:-translate-y-0.5 shrink-0">
                     <span>Créer une campagne</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                     </svg>
-                </a>
+                </a><?php endif; ?>
             </section>
 
         </div>
@@ -467,7 +472,7 @@
                     <ul class="mt-4 space-y-2 text-xs">
                         <li><a href="/" class="transition-colors hover:text-primary">Accueil</a></li>
                         <li><a href="/campaigns" class="transition-colors hover:text-primary">Explorer les campagnes</a></li>
-                        <li><a href="/dashboard" class="transition-colors hover:text-primary">Espace organisateur</a></li>
+                        <li><a href="<?= $isSuperAdmin ? '/admin' : '/dashboard' ?>" class="transition-colors hover:text-primary"><?= $isSuperAdmin ? 'Administration' : 'Espace organisateur' ?></a></li>
                     </ul>
                 </div>
 

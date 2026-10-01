@@ -9,10 +9,11 @@ import 'package:ivote/main.dart';
 
 void main() {
   testWidgets('IVote se construit', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const IVoteApp());
     await tester.pump();
 
     expect(find.text('IVote'), findsOneWidget);
-    expect(find.text('Vote & Paiement Mobile Money'), findsOneWidget);
+    expect(find.text('Votes Monétisés'), findsOneWidget);
+    expect(find.text('Accueil'), findsOneWidget);
   });
 }

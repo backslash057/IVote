@@ -9,6 +9,7 @@ import 'auth/login_page.dart';
 import 'auth/signup_page.dart';
 import 'campaign_detail_page.dart';
 import 'campaign_manage_page.dart';
+import 'create_campaign_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -61,7 +62,8 @@ class _DashboardPageState extends State<DashboardPage> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   children: [
                     _buildHeroPlaceholder(theme),
                     const SizedBox(height: 24),
@@ -73,16 +75,20 @@ class _DashboardPageState extends State<DashboardPage> {
               }
 
               if (snapshot.hasError) {
-                return _buildErrorState(theme, '${snapshot.error}'.replaceAll('Exception: ', ''));
+                return _buildErrorState(
+                    theme, '${snapshot.error}'.replaceAll('Exception: ', ''));
               }
 
               final campaigns = snapshot.data ?? [];
-              final activeCount = campaigns.where((c) => c.status == 'active').length;
-              final totalVotes = campaigns.fold<int>(0, (sum, c) => sum + c.totalVotes);
+              final activeCount =
+                  campaigns.where((c) => c.status == 'active').length;
+              final totalVotes =
+                  campaigns.fold<int>(0, (sum, c) => sum + c.totalVotes);
 
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 children: [
                   // 1. Hero Header & Stats Banner
                   _buildHeroHeader(
@@ -132,7 +138,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   color: theme.colorScheme.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Icon(Icons.bar_chart_rounded, size: 36, color: theme.colorScheme.primary),
+                child: Icon(Icons.bar_chart_rounded,
+                    size: 36, color: theme.colorScheme.primary),
               ),
               const SizedBox(height: 20),
               Text(
@@ -149,7 +156,10 @@ class _DashboardPageState extends State<DashboardPage> {
               Text(
                 'Connectez-vous pour piloter vos campagnes, ajouter des candidats et suivre les votes en direct.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, height: 1.5, color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -163,12 +173,15 @@ class _DashboardPageState extends State<DashboardPage> {
                     if (res == true) _loadCampaigns();
                   },
                   icon: const Icon(Icons.login_rounded, size: 18),
-                  label: const Text('Se Connecter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('Se Connecter',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -184,11 +197,14 @@ class _DashboardPageState extends State<DashboardPage> {
                     if (res == true) _loadCampaigns();
                   },
                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                  label: const Text('Créer un compte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('Créer un compte',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.onSurface,
                     side: BorderSide(color: theme.colorScheme.outline),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -238,19 +254,22 @@ class _DashboardPageState extends State<DashboardPage> {
 
           // Bouton Créer une campagne
           ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Formulaire de création de campagne bientôt disponible.')),
-              );
+            onPressed: () async {
+              final createdId = await Navigator.of(context).push<int>(
+                  MaterialPageRoute(
+                      builder: (_) => const CreateCampaignPage()));
+              if (createdId != null && mounted) _loadCampaigns();
             },
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Nouvelle Campagne', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            label: const Text('Nouvelle Campagne',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 18),
@@ -334,6 +353,21 @@ class _DashboardPageState extends State<DashboardPage> {
     final status = campaign.status;
     final isActive = status == 'active';
     final isDraft = status == 'draft';
+    final statusLabel = switch (status) {
+      'active' => 'En direct',
+      'draft' => 'Brouillon',
+      'suspended' => 'Suspendue',
+      'pending_review' => 'En validation',
+      'archived' => 'Archivée',
+      _ => 'Terminée',
+    };
+    final statusColor = isActive
+        ? AppColors.greenAccent
+        : isDraft
+            ? AppColors.orangeAccent
+            : status == 'suspended'
+                ? AppColors.redAccent
+                : theme.colorScheme.onSurfaceVariant;
 
     String? imageUrl = campaign.imageUrl;
     if (imageUrl != null && imageUrl.startsWith('/')) {
@@ -376,7 +410,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 top: 12,
                 right: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface.withOpacity(0.92),
                     borderRadius: BorderRadius.circular(8),
@@ -397,15 +432,11 @@ class _DashboardPageState extends State<DashboardPage> {
                         const SizedBox(width: 6),
                       ],
                       Text(
-                        isActive
-                            ? 'En direct'
-                            : (isDraft ? '📝 Brouillon' : 'Terminé'),
+                        statusLabel,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isActive
-                              ? theme.colorScheme.onSurface
-                              : (isDraft ? AppColors.orangeAccent : theme.colorScheme.onSurfaceVariant),
+                          color: statusColor,
                         ),
                       ),
                     ],
@@ -451,6 +482,14 @@ class _DashboardPageState extends State<DashboardPage> {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (status == 'suspended') ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Campagne suspendue : ${campaign.suspensionReason ?? 'contactez le support pour le motif.'}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.redAccent),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Divider(color: theme.colorScheme.outline, height: 1),
                 const SizedBox(height: 12),
@@ -509,17 +548,21 @@ class _DashboardPageState extends State<DashboardPage> {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => CampaignManagePage(campaignId: campaign.id),
+                                builder: (_) =>
+                                    CampaignManagePage(campaignId: campaign.id),
                               ),
                             );
                           },
                           icon: const Icon(Icons.settings_outlined, size: 16),
-                          label: const Text('Gérer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          label: const Text('Gérer',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: theme.colorScheme.primary,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -532,20 +575,33 @@ class _DashboardPageState extends State<DashboardPage> {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => CampaignDetailPage(campaignId: campaign.id),
+                                builder: (_) =>
+                                    CampaignDetailPage(campaignId: campaign.id),
                               ),
                             );
                           },
                           icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                          label: const Text('Page Publique', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text('Page Publique',
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: theme.colorScheme.onSurface,
                             side: BorderSide(color: theme.colorScheme.outline),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
                     ),
+                    if (isDraft) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () => _confirmDeleteCampaign(campaign),
+                        tooltip: 'Supprimer le brouillon',
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        color: AppColors.redAccent,
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -554,6 +610,35 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteCampaign(Campaign campaign) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer le brouillon ?'),
+        content: Text(
+            'La campagne « ${campaign.title} » sera supprimée définitivement.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _campaignService.deleteCampaign(campaign.id);
+      if (mounted) _loadCampaigns();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.redAccent));
+    }
   }
 
   Widget _buildNoImage(ThemeData theme) {
@@ -608,7 +693,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   color: AppColors.redAccent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.error_outline_rounded, color: AppColors.redAccent, size: 32),
+                child: const Icon(Icons.error_outline_rounded,
+                    color: AppColors.redAccent, size: 32),
               ),
               const SizedBox(height: 14),
               Text(
@@ -623,7 +709,8 @@ class _DashboardPageState extends State<DashboardPage> {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 18),
               ElevatedButton.icon(
@@ -633,7 +720,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],

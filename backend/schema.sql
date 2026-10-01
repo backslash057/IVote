@@ -3,7 +3,14 @@ CREATE TABLE IF NOT EXISTS Users (
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(100) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  password VARCHAR(256) NOT NULL
+  password VARCHAR(256) NOT NULL,
+  role ENUM('organizer', 'super_admin') NOT NULL DEFAULT 'organizer',
+  status ENUM('active', 'suspended', 'disabled') NOT NULL DEFAULT 'active',
+  suspended_at DATETIME NULL,
+  suspended_by INT NULL,
+  suspension_reason VARCHAR(500) NULL,
+  session_version INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (suspended_by) REFERENCES Users(user_id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS Campaign (
@@ -16,6 +23,11 @@ CREATE TABLE IF NOT EXISTS Campaign (
   date_cloture DATETIME NULL,
   organiser_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('draft', 'pending_review', 'published', 'suspended', 'closed', 'archived') NOT NULL DEFAULT 'draft',
+  suspended_at DATETIME NULL,
+  suspended_by INT NULL,
+  suspension_reason VARCHAR(500) NULL,
+  status_before_suspension ENUM('draft', 'pending_review', 'published', 'closed', 'archived') NULL,
   FOREIGN KEY (organiser_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
@@ -25,6 +37,7 @@ CREATE TABLE IF NOT EXISTS Category (
   campaign_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (campaign_id) REFERENCES Campaign(campaign_id) ON DELETE CASCADE
+  ,UNIQUE KEY uq_category_name_per_campaign (campaign_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS Candidate (
@@ -52,6 +65,10 @@ CREATE TABLE IF NOT EXISTS Vote (
   payment_method ENUM('mtn_momo', 'orange_money') NOT NULL,
   vote_count INT NOT NULL DEFAULT 1,
   amount_fcfa INT NOT NULL,
+  payment_status ENUM('pending', 'confirmed', 'failed', 'refunded', 'cancelled') NOT NULL DEFAULT 'confirmed',
+  platform_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+  platform_fee_amount_fcfa INT NOT NULL DEFAULT 0,
+  organizer_net_amount_fcfa INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (candidate_id) REFERENCES Candidate(candidate_id) ON DELETE CASCADE,
   FOREIGN KEY (campaign_id) REFERENCES Campaign(campaign_id) ON DELETE CASCADE
@@ -64,9 +81,55 @@ CREATE TABLE IF NOT EXISTS Payout (
   payment_method ENUM('mtn_momo', 'orange_money') NOT NULL,
   account_holder VARCHAR(100) NOT NULL,
   wallet_number VARCHAR(50) NOT NULL,
-  status ENUM('pending', 'completed', 'rejected') NOT NULL DEFAULT 'pending',
+  status ENUM('pending', 'under_review', 'approved', 'paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending',
+  rejection_reason VARCHAR(500) NULL,
+  requested_by INT NULL,
+  reviewed_by INT NULL,
+  reviewed_at DATETIME NULL,
+  payment_reference VARCHAR(150) NULL,
+  processed_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (requested_by) REFERENCES Users(user_id) ON DELETE SET NULL,
+  FOREIGN KEY (reviewed_by) REFERENCES Users(user_id) ON DELETE SET NULL,
   FOREIGN KEY (campaign_id) REFERENCES Campaign(campaign_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS PlatformSetting (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value VARCHAR(255) NOT NULL,
+  updated_by INT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (updated_by) REFERENCES Users(user_id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS AuditLog (
+  audit_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  actor_id INT NULL,
+  action VARCHAR(100) NOT NULL,
+  resource_type VARCHAR(100) NOT NULL,
+  resource_id INT NULL,
+  reason VARCHAR(500) NULL,
+  old_values JSON NULL,
+  new_values JSON NULL,
+  ip_address VARCHAR(45) NULL,
+  user_agent VARCHAR(500) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (actor_id) REFERENCES Users(user_id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS Notification (
+  notification_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  recipient_id INT NOT NULL,
+  sender_id INT NULL,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  message TEXT NOT NULL,
+  resource_type VARCHAR(100) NULL,
+  resource_id INT NULL,
+  read_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (recipient_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES Users(user_id) ON DELETE SET NULL
 );
 
 -- ==============================================================================
@@ -78,6 +141,14 @@ INSERT INTO Users (email, name, password) VALUES
 ('orga1@ivote.cm', 'Paul Ndombe (Events Cam)', '$2y$12$/4hF1uNr4OZJu57Y0HxMb.AxUzbAHwbTRuG8yoRZkdt7bF8FQI50u'),
 ('orga2@ivote.cm', 'Aïcha Kone (AfroTech Lab)', '$2y$12$/4hF1uNr4OZJu57Y0HxMb.AxUzbAHwbTRuG8yoRZkdt7bF8FQI50u'),
 ('orga3@ivote.cm', 'Samuel Eto (Urban Music Prod)', '$2y$12$/4hF1uNr4OZJu57Y0HxMb.AxUzbAHwbTRuG8yoRZkdt7bF8FQI50u');
+
+INSERT INTO Users (email, name, password, role)
+SELECT 'admin@ivote.cm', 'IVote Super Admin', '$2y$12$/4hF1uNr4OZJu57Y0HxMb.AxUzbAHwbTRuG8yoRZkdt7bF8FQI50u', 'super_admin'
+WHERE NOT EXISTS (SELECT 1 FROM Users WHERE role = 'super_admin');
+
+INSERT INTO PlatformSetting (setting_key, setting_value)
+VALUES ('platform_fee_rate', '10.00')
+ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
 SET @orga1 = (SELECT user_id FROM Users WHERE email = 'orga1@ivote.cm');
 SET @orga2 = (SELECT user_id FROM Users WHERE email = 'orga2@ivote.cm');

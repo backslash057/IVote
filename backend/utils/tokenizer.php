@@ -15,11 +15,12 @@ class Tokenizer {
     /**
      * Generates a signed HMAC-SHA256 JWT token valid for 30 days
      */
-    public static function generateToken(string $email, int $ttlSeconds = 2592000): string {
+    public static function generateToken(string $email, int $ttlSeconds = 2592000, int $sessionVersion = 0): string {
         $payload = [
             'createdAt' => time(),
             'expires'   => time() + $ttlSeconds,
             'email'     => $email,
+            'sessionVersion' => $sessionVersion,
         ];
         return self::encodeJWT($payload);
     }

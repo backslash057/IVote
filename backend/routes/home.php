@@ -1,5 +1,9 @@
 <?php
 require_once $_SERVER["DOCUMENT_ROOT"] . '/controllers/CampaignController.php';
+require_once $_SERVER["DOCUMENT_ROOT"] . '/controllers/AuthController.php';
+
+$viewer = (new AuthController())->getAuthUser();
+$isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
 
 try {
     $campaignController = new CampaignController();
@@ -80,8 +84,8 @@ try {
                     </button>
 
                     <!-- Get Started -->
-                    <a href="/dashboard" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md transition transform hover:-translate-y-0.5">
-                        <span>Espace organisateur</span>
+                    <a href="<?= $isSuperAdmin ? '/admin' : '/dashboard' ?>" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md transition transform hover:-translate-y-0.5">
+                        <span><?= $isSuperAdmin ? 'Administration' : 'Espace organisateur' ?></span>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                         </svg>
@@ -144,12 +148,14 @@ try {
                     </p>
 
                     <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                        <?php if (!$isSuperAdmin): ?>
                         <a href="/campaigns/new" class="w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2">
                             <span>Créer ma campagne</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
                         </a>
+                        <?php endif; ?>
                         <a href="/campaigns" class="w-full sm:w-auto px-8 py-3.5 bg-surface-secondary hover:bg-surface border border-bordercustom text-fore font-bold text-sm rounded-xl transition flex items-center justify-center gap-2">
                             <span>Voir les campagnes en cours</span>
                         </a>
@@ -432,7 +438,7 @@ try {
                     <ul class="mt-4 space-y-2 text-xs">
                         <li><a href="/" class="transition-colors hover:text-primary">Accueil</a></li>
                         <li><a href="/campaigns" class="transition-colors hover:text-primary">Explorer les campagnes</a></li>
-                        <li><a href="/dashboard" class="transition-colors hover:text-primary">Espace organisateur</a></li>
+                        <li><a href="<?= $isSuperAdmin ? '/admin' : '/dashboard' ?>" class="transition-colors hover:text-primary"><?= $isSuperAdmin ? 'Administration' : 'Espace organisateur' ?></a></li>
                     </ul>
                 </div>
 

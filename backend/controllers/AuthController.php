@@ -14,22 +14,29 @@ class AuthController extends BaseController {
             return ['success' => false, 'message' => 'Email et mot de passe requis.'];
         }
 
-        $stmt = $this->db->prepare("SELECT user_id, name, email, password FROM Users WHERE email = ?");
+        $stmt = $this->db->prepare("SELECT user_id, name, email, password, role, status, session_version FROM Users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        if ($user && $user['status'] !== 'active') {
+            http_response_code(403);
+            return ['success' => false, 'message' => 'Ce compte est suspendu ou désactivé.'];
+        }
+
         if ($user && password_verify($password, $user['password'])) {
-            $token = Tokenizer::generateToken($email);
+            $token = Tokenizer::generateToken($email, 2592000, (int)$user['session_version']);
             $this->setAuthCookie($token);
 
             return [
                 'success' => true,
                 'message' => 'Connexion réussie.',
                 'token' => $token,
+                'redirect' => $user['role'] === 'super_admin' ? '/admin' : '/dashboard',
                 'user' => [
                     'user_id' => (int)$user['user_id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
+                    'role' => $user['role'],
                 ]
             ];
         }
@@ -69,10 +76,12 @@ class AuthController extends BaseController {
             'success' => true,
             'message' => 'Compte créé avec succès.',
             'token' => $token,
+            'redirect' => '/dashboard',
             'user' => [
                 'user_id' => $newUserId,
                 'name' => $name,
                 'email' => $email,
+                'role' => 'organizer',
             ]
         ];
     }
@@ -100,6 +109,8 @@ class AuthController extends BaseController {
                 'user_id' => (int)$user['user_id'],
                 'name' => $user['name'],
                 'email' => $user['email'],
+                'role' => $user['role'] ?? 'organizer',
+                'status' => $user['status'] ?? 'active',
             ]
         ];
     }
@@ -158,7 +169,7 @@ class AuthController extends BaseController {
             $stmtUpdate->execute([$name, $email, $userId]);
         }
 
-        $token = Tokenizer::generateToken($email);
+        $token = Tokenizer::generateToken($email, 2592000, (int)($user['session_version'] ?? 0));
         $this->setAuthCookie($token);
 
         return [
@@ -178,9 +189,9 @@ class AuthController extends BaseController {
      * Returns organizer aggregate summary
      */
     public function stats(): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $userId = (int)$user['user_id'];
@@ -200,6 +211,9 @@ class AuthController extends BaseController {
         $stats = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $totalRevenue = (int)($stats['total_revenue'] ?? 0);
+        $stmtNet = $this->db->prepare("SELECT COALESCE(SUM(v.organizer_net_amount_fcfa), 0) FROM Vote v JOIN Campaign c ON c.campaign_id = v.campaign_id WHERE c.organiser_id = ? AND v.payment_status = 'confirmed'");
+        $stmtNet->execute([$userId]);
+        $netRevenue = (int)$stmtNet->fetchColumn();
 
         return [
             'success' => true,
@@ -208,7 +222,7 @@ class AuthController extends BaseController {
                 'active_campaigns' => (int)($stats['active_campaigns'] ?? 0),
                 'total_votes' => (int)($stats['total_votes'] ?? 0),
                 'total_revenue' => $totalRevenue,
-                'available_balance' => (int)round($totalRevenue * 0.90)
+                'available_balance' => $netRevenue
             ]
         ];
     }

@@ -388,6 +388,84 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    async function sendDraftRequest(url, method, payload) {
+        const response = await fetch(url, {
+            method,
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: payload ? JSON.stringify(payload) : undefined
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Action impossible.');
+        return data;
+    }
+
+    document.querySelectorAll('.candidate-edit').forEach((button) => button.addEventListener('click', async () => {
+        const name = window.prompt('Nom du candidat :', button.dataset.name);
+        if (name === null || !name.trim()) return;
+        const number = Number(window.prompt('Numéro du candidat :', button.dataset.number));
+        if (!Number.isInteger(number) || number < 1) { window.alert('Numéro invalide.'); return; }
+        const ageValue = window.prompt('Âge :', button.dataset.age === '0' ? '' : button.dataset.age);
+        if (ageValue === null) return;
+        const theme = window.prompt('Thème :', button.dataset.theme);
+        if (theme === null) return;
+        const description = window.prompt('Description :', button.dataset.description);
+        if (description === null) return;
+        const bio = window.prompt('Biographie :', button.dataset.bio);
+        if (bio === null) return;
+        const categoryOptions = [...document.querySelectorAll('#categorySelect option')]
+            .filter((option) => option.value && option.value !== 'new')
+            .map((option) => `${option.value} = ${option.textContent.trim()}`)
+            .join('\n');
+        const categoryChoice = window.prompt(`ID de catégorie (laisser vide pour aucune) :\n${categoryOptions}`, button.dataset.categoryId === '0' ? '' : button.dataset.categoryId);
+        if (categoryChoice === null) return;
+        const categoryId = categoryChoice.trim() ? Number(categoryChoice) : null;
+        if (categoryId !== null && !Number.isInteger(categoryId)) { window.alert('ID de catégorie invalide.'); return; }
+        try {
+            await sendDraftRequest(`/api/candidates/${button.dataset.candidateId}`, 'PUT', {
+                name: name.trim(), candidate_number: number,
+                age: ageValue.trim() ? Number(ageValue) : null,
+                theme, description, bio,
+                category_id: categoryId
+            });
+            location.reload();
+        } catch (error) { window.alert(error.message); }
+    }));
+
+    document.querySelectorAll('.candidate-delete').forEach((button) => button.addEventListener('click', async () => {
+        if (!window.confirm(`Supprimer le candidat « ${button.dataset.name} » ?`)) return;
+        try {
+            await sendDraftRequest(`/api/candidates/${button.dataset.candidateId}`, 'DELETE');
+            location.reload();
+        } catch (error) { window.alert(error.message); }
+    }));
+
+    const addCategoryButton = document.getElementById('addCategoryBtn');
+    if (addCategoryButton) addCategoryButton.addEventListener('click', async () => {
+        const name = window.prompt('Nom de la nouvelle catégorie :');
+        if (!name || !name.trim()) return;
+        try {
+            await sendDraftRequest(`/api/campaigns/${campaignId}/categories`, 'POST', {name: name.trim()});
+            location.reload();
+        } catch (error) { window.alert(error.message); }
+    });
+
+    document.querySelectorAll('.category-rename').forEach((button) => button.addEventListener('click', async () => {
+        const name = window.prompt('Nouveau nom de catégorie :', button.dataset.categoryName);
+        if (!name || !name.trim()) return;
+        try {
+            await sendDraftRequest(`/api/categories/${button.dataset.categoryId}`, 'PUT', {name: name.trim()});
+            location.reload();
+        } catch (error) { window.alert(error.message); }
+    }));
+
+    document.querySelectorAll('.category-delete').forEach((button) => button.addEventListener('click', async () => {
+        if (!window.confirm('Supprimer cette catégorie vide ?')) return;
+        try {
+            await sendDraftRequest(`/api/categories/${button.dataset.categoryId}`, 'DELETE');
+            location.reload();
+        } catch (error) { window.alert(error.message); }
+    }));
+
     // --- 13. Relancer la campagne avec validation date future ---
     const formRelaunch = document.getElementById('formRelaunch');
     if (formRelaunch) {

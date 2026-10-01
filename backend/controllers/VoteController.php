@@ -8,9 +8,9 @@ class VoteController extends BaseController {
      * GET /api/campaigns/{id}/votes
      */
     public function index(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -47,11 +47,11 @@ class VoteController extends BaseController {
             return ['success' => false, 'message' => 'Données de vote invalides (1 à 500 votes, moyen de paiement valide requis).'];
         }
 
-        $stmtCheck = $this->db->prepare("SELECT price_per_vote, is_draft, date_cloture FROM Campaign WHERE campaign_id = ?");
+        $stmtCheck = $this->db->prepare("SELECT price_per_vote, status, date_cloture FROM Campaign WHERE campaign_id = ?");
         $stmtCheck->execute([$campaignId]);
         $camp = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
-        if (!$camp || (int)$camp['is_draft'] === 1 || ($camp['date_cloture'] && strtotime($camp['date_cloture']) < time())) {
+        if (!$camp || $camp['status'] !== 'published' || ($camp['date_cloture'] && strtotime($camp['date_cloture']) < time())) {
             http_response_code(400);
             return ['success' => false, 'message' => 'Cette campagne n\'est pas active ou est clôturée.'];
         }
@@ -72,13 +72,16 @@ class VoteController extends BaseController {
         };
 
         $amountFcfa = (int)round($voteCount * $price * $discount);
+        $feeRate = $this->getPlatformFeeRate();
+        $feeAmount = (int)round($amountFcfa * $feeRate / 100);
+        $organizerNet = $amountFcfa - $feeAmount;
         $transactionRef = 'TX-' . strtoupper(uniqid());
 
         $stmt = $this->db->prepare("
-            INSERT INTO Vote (transaction_ref, candidate_id, campaign_id, payment_method, vote_count, amount_fcfa)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO Vote (transaction_ref, candidate_id, campaign_id, payment_method, vote_count, amount_fcfa, payment_status, platform_fee_rate, platform_fee_amount_fcfa, organizer_net_amount_fcfa)
+            VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)
         ");
-        $stmt->execute([$transactionRef, $candidateId, $campaignId, $paymentMethod, $voteCount, $amountFcfa]);
+        $stmt->execute([$transactionRef, $candidateId, $campaignId, $paymentMethod, $voteCount, $amountFcfa, $feeRate, $feeAmount, $organizerNet]);
 
         http_response_code(201);
         return [

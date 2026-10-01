@@ -10,6 +10,10 @@ if (empty($userSession['success'])) {
 }
 
 $user = $userSession['user'];
+if (($user['role'] ?? '') !== 'organizer') {
+    header('Location: /admin');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">

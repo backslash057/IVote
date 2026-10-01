@@ -59,11 +59,15 @@ abstract class BaseController {
             return null;
         }
 
-        $stmt = $this->db->prepare("SELECT user_id, name, email FROM Users WHERE email = ?");
+        $stmt = $this->db->prepare("SELECT user_id, name, email, role, status, session_version FROM Users WHERE email = ?");
         $stmt->execute([$payload['email']]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $user ?: null;
+        if (!$user || $user['status'] !== 'active' || (int)($payload['sessionVersion'] ?? 0) !== (int)$user['session_version']) {
+            return null;
+        }
+
+        return $user;
     }
 
     /**
@@ -78,6 +82,77 @@ abstract class BaseController {
         return $user;
     }
 
+    protected function requireRole(string $role): ?array {
+        $user = $this->requireAuth();
+        if (!$user) {
+            return null;
+        }
+
+        if (($user['role'] ?? 'organizer') !== $role) {
+            http_response_code(403);
+            return null;
+        }
+
+        return $user;
+    }
+
+    protected function requireSuperAdmin(): ?array {
+        return $this->requireRole('super_admin');
+    }
+
+    protected function requireOrganizer(): ?array {
+        return $this->requireRole('organizer');
+    }
+
+    protected function getPlatformFeeRate(): float {
+        $stmt = $this->db->prepare("SELECT setting_value FROM PlatformSetting WHERE setting_key = 'platform_fee_rate'");
+        $stmt->execute();
+        $rate = $stmt->fetchColumn();
+        return is_numeric($rate) ? max(0, min(100, (float)$rate)) : 10.0;
+    }
+
+    protected function writeAudit(
+        ?int $actorId,
+        string $action,
+        string $resourceType,
+        ?int $resourceId = null,
+        ?string $reason = null,
+        ?array $oldValues = null,
+        ?array $newValues = null
+    ): void {
+        $stmt = $this->db->prepare(
+            "INSERT INTO AuditLog (actor_id, action, resource_type, resource_id, reason, old_values, new_values, ip_address, user_agent)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            $actorId,
+            $action,
+            $resourceType,
+            $resourceId,
+            $reason,
+            $oldValues ? json_encode($oldValues, JSON_UNESCAPED_UNICODE) : null,
+            $newValues ? json_encode($newValues, JSON_UNESCAPED_UNICODE) : null,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
+        ]);
+    }
+
+    protected function createNotification(
+        int $recipientId,
+        string $type,
+        string $title,
+        string $message,
+        ?int $senderId = null,
+        ?string $resourceType = null,
+        ?int $resourceId = null
+    ): void {
+        $stmt = $this->db->prepare(
+            "INSERT INTO Notification (recipient_id, sender_id, type, title, message, resource_type, resource_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([$recipientId, $senderId, $type, $title, $message, $resourceType, $resourceId]);
+    }
+
     /**
      * Verifies that the authenticated user is the owner of a campaign
      */
@@ -85,6 +160,13 @@ abstract class BaseController {
         $stmt = $this->db->prepare("SELECT campaign_id FROM Campaign WHERE campaign_id = ? AND organiser_id = ?");
         $stmt->execute([$campaignId, $userId]);
         return (bool)$stmt->fetchColumn();
+    }
+
+    protected function isCampaignEditable(int $campaignId): bool {
+        $stmt = $this->db->prepare("SELECT status, is_draft FROM Campaign WHERE campaign_id = ?");
+        $stmt->execute([$campaignId]);
+        $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $campaign && ($campaign['status'] === 'draft' || $campaign['status'] === 'pending_review' || (int)$campaign['is_draft'] === 1);
     }
 
     /**

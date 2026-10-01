@@ -29,7 +29,9 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
     });
   }
 
-  String _formatNumber(num number) {
+  String _formatNumber(Object? value) {
+    final number =
+        value is num ? value : num.tryParse(value?.toString() ?? '') ?? 0;
     return number.toString().replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]} ',
@@ -39,7 +41,8 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
   // --- ACTIONS DE STATUT ---
   Future<void> _handleStatusAction(String action) async {
     try {
-      final res = await _service.updateCampaignStatus(widget.campaignId, action);
+      final res =
+          await _service.updateCampaignStatus(widget.campaignId, action);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -65,8 +68,10 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
   void _showEditCampaignModal(Map<String, dynamic> campaign) {
     final titleCtrl = TextEditingController(text: campaign['title'] ?? '');
     final descCtrl = TextEditingController(text: campaign['description'] ?? '');
-    final priceCtrl = TextEditingController(text: campaign['price_per_vote']?.toString() ?? '100');
-    final dateCtrl = TextEditingController(text: campaign['date_cloture'] ?? '');
+    final priceCtrl = TextEditingController(
+        text: campaign['price_per_vote']?.toString() ?? '100');
+    final dateCtrl =
+        TextEditingController(text: campaign['date_cloture'] ?? '');
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -86,7 +91,8 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
             ),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -106,11 +112,17 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                   const SizedBox(height: 16),
                   Text(
                     'Modifier la campagne',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 16),
-
-                  Text('Titre', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Titre',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: titleCtrl,
@@ -118,12 +130,16 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                       filled: true,
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Description',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: descCtrl,
@@ -132,12 +148,16 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                       filled: true,
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  Text('Prix par vote (FCFA)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Prix par vote (FCFA)',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: priceCtrl,
@@ -146,12 +166,16 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                       filled: true,
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  Text('Date de clôture (ex: 2026-12-31 23:59:59)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Date de clôture (ex: 2026-12-31 23:59:59)',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: dateCtrl,
@@ -160,11 +184,11 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                       fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: InputBorder.none,
                       hintText: 'Optionnel',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   SizedBox(
                     height: 44,
                     child: ElevatedButton(
@@ -177,30 +201,44 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                   id: widget.campaignId,
                                   title: titleCtrl.text.trim(),
                                   description: descCtrl.text.trim(),
-                                  pricePerVote: int.tryParse(priceCtrl.text) ?? 100,
-                                  dateCloture: dateCtrl.text.trim().isEmpty ? null : dateCtrl.text.trim(),
+                                  pricePerVote:
+                                      int.tryParse(priceCtrl.text) ?? 100,
+                                  dateCloture: dateCtrl.text.trim().isEmpty
+                                      ? null
+                                      : dateCtrl.text.trim(),
                                 );
                                 if (!mounted) return;
                                 Navigator.of(ctx).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Campagne modifiée avec succès.')),
+                                  const SnackBar(
+                                      content: Text(
+                                          'Campagne modifiée avec succès.')),
                                 );
                                 _load();
                               } catch (e) {
                                 setModalState(() => isSaving = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                                  SnackBar(
+                                      content: Text(e
+                                          .toString()
+                                          .replaceAll('Exception: ', ''))),
                                 );
                               }
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: isSaving
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Enregistrer', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Enregistrer',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -221,7 +259,9 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
     final descCtrl = TextEditingController();
     final newCatCtrl = TextEditingController();
 
-    int? selectedCatId = categories.isNotEmpty ? (categories.first['category_id'] as int) : null;
+    int? selectedCatId = categories.isNotEmpty
+        ? int.tryParse(categories.first['category_id'].toString())
+        : null;
     bool isNewCategory = categories.isEmpty;
     bool isSaving = false;
 
@@ -242,7 +282,8 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
             ),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -262,7 +303,10 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                   const SizedBox(height: 16),
                   Text(
                     'Ajouter un Candidat',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 16),
 
@@ -272,15 +316,21 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Nom complet *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                            Text('Nom complet *',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface)),
                             const SizedBox(height: 4),
                             TextField(
                               controller: nameCtrl,
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceContainerHighest,
+                                fillColor:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                               ),
                             ),
                           ],
@@ -292,16 +342,22 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('N° Dossard *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                            Text('N° Dossard *',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface)),
                             const SizedBox(height: 4),
                             TextField(
                               controller: numberCtrl,
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceContainerHighest,
+                                fillColor:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                               ),
                             ),
                           ],
@@ -317,16 +373,22 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Âge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                            Text('Âge',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface)),
                             const SizedBox(height: 4),
                             TextField(
                               controller: ageCtrl,
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceContainerHighest,
+                                fillColor:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                               ),
                             ),
                           ],
@@ -337,15 +399,21 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Thème / Slogan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                            Text('Thème / Slogan',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface)),
                             const SizedBox(height: 4),
                             TextField(
                               controller: themeCtrl,
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceContainerHighest,
+                                fillColor:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                               ),
                             ),
                           ],
@@ -356,28 +424,37 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                   const SizedBox(height: 12),
 
                   // Catégorie
-                  Text('Catégorie', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                  Text('Catégorie',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   if (categories.isNotEmpty && !isNewCategory) ...[
                     DropdownButtonFormField<int>(
                       value: selectedCatId,
                       items: categories.map((cat) {
                         return DropdownMenuItem<int>(
-                          value: cat['category_id'] as int,
-                          child: Text(cat['name'] as String, style: const TextStyle(fontSize: 13)),
+                          value: int.tryParse(cat['category_id'].toString()),
+                          child: Text(cat['name'] as String,
+                              style: const TextStyle(fontSize: 13)),
                         );
                       }).toList(),
-                      onChanged: (val) => setModalState(() => selectedCatId = val),
+                      onChanged: (val) =>
+                          setModalState(() => selectedCatId = val),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: theme.colorScheme.surfaceContainerHighest,
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
                       ),
                     ),
                     TextButton(
-                      onPressed: () => setModalState(() => isNewCategory = true),
-                      child: const Text('+ Créer une nouvelle catégorie', style: TextStyle(fontSize: 11)),
+                      onPressed: () =>
+                          setModalState(() => isNewCategory = true),
+                      child: const Text('+ Créer une nouvelle catégorie',
+                          style: TextStyle(fontSize: 11)),
                     ),
                   ] else ...[
                     TextField(
@@ -387,13 +464,16 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         fillColor: theme.colorScheme.surfaceContainerHighest,
                         border: InputBorder.none,
                         hintText: 'Nom de la nouvelle catégorie',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
                       ),
                     ),
                     if (categories.isNotEmpty)
                       TextButton(
-                        onPressed: () => setModalState(() => isNewCategory = false),
-                        child: const Text('Choisir une catégorie existante', style: TextStyle(fontSize: 11)),
+                        onPressed: () =>
+                            setModalState(() => isNewCategory = false),
+                        child: const Text('Choisir une catégorie existante',
+                            style: TextStyle(fontSize: 11)),
                       ),
                   ],
                   const SizedBox(height: 20),
@@ -405,10 +485,13 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                           ? null
                           : () async {
                               final name = nameCtrl.text.trim();
-                              final number = int.tryParse(numberCtrl.text.trim()) ?? 0;
+                              final number =
+                                  int.tryParse(numberCtrl.text.trim()) ?? 0;
                               if (name.isEmpty || number <= 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Nom et numéro de dossard requis.')),
+                                  const SnackBar(
+                                      content: Text(
+                                          'Nom et numéro de dossard requis.')),
                                 );
                                 return;
                               }
@@ -422,14 +505,18 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                   age: int.tryParse(ageCtrl.text.trim()),
                                   theme: themeCtrl.text.trim(),
                                   description: descCtrl.text.trim(),
-                                  categoryId: isNewCategory ? null : selectedCatId,
-                                  newCategoryName: isNewCategory ? newCatCtrl.text.trim() : null,
+                                  categoryId:
+                                      isNewCategory ? null : selectedCatId,
+                                  newCategoryName: isNewCategory
+                                      ? newCatCtrl.text.trim()
+                                      : null,
                                 );
                                 if (!mounted) return;
                                 Navigator.of(ctx).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Candidat ajouté avec succès !'),
+                                    content:
+                                        Text('Candidat ajouté avec succès !'),
                                     backgroundColor: AppColors.greenAccent,
                                   ),
                                 );
@@ -437,18 +524,27 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                               } catch (e) {
                                 setModalState(() => isSaving = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                                  SnackBar(
+                                      content: Text(e
+                                          .toString()
+                                          .replaceAll('Exception: ', ''))),
                                 );
                               }
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: isSaving
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Enregistrer le Candidat', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Enregistrer le Candidat',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -460,6 +556,208 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
     );
   }
 
+  Future<void> _editCandidate(
+      Map<String, dynamic> candidate, List<dynamic> categories) async {
+    final nameController =
+        TextEditingController(text: candidate['name']?.toString() ?? '');
+    final numberController = TextEditingController(
+        text: candidate['candidate_number']?.toString() ?? '');
+    final ageController =
+        TextEditingController(text: candidate['age']?.toString() ?? '');
+    final themeController =
+        TextEditingController(text: candidate['theme']?.toString() ?? '');
+    final descriptionController =
+        TextEditingController(text: candidate['description']?.toString() ?? '');
+    final bioController =
+        TextEditingController(text: candidate['bio']?.toString() ?? '');
+    int? categoryId =
+        int.tryParse(candidate['category_id']?.toString() ?? '') ??
+            (categories.isNotEmpty
+                ? int.tryParse(categories.first['category_id'].toString())
+                : null);
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Modifier le candidat'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom')),
+              TextField(
+                  controller: numberController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Numéro de candidat')),
+              TextField(
+                  controller: ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Âge')),
+              TextField(
+                  controller: themeController,
+                  decoration: const InputDecoration(labelText: 'Thème')),
+              TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Description')),
+              TextField(
+                  controller: bioController,
+                  decoration: const InputDecoration(labelText: 'Biographie')),
+              if (categories.isNotEmpty)
+                DropdownButtonFormField<int>(
+                  value: categoryId,
+                  decoration: const InputDecoration(labelText: 'Catégorie'),
+                  items: categories
+                      .map((item) => DropdownMenuItem<int>(
+                          value:
+                              int.tryParse(item['category_id'].toString()) ?? 0,
+                          child: Text(item['name'] ?? '')))
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => categoryId = value),
+                ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Annuler')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Enregistrer')),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    try {
+      await _service.updateCandidate(
+        candidateId: (candidate['candidate_id'] as num).toInt(),
+        name: nameController.text.trim(),
+        candidateNumber: int.tryParse(numberController.text) ?? 0,
+        categoryId: categoryId,
+        age: int.tryParse(ageController.text),
+        theme: themeController.text.trim(),
+        description: descriptionController.text.trim(),
+        bio: bioController.text.trim(),
+      );
+      _load();
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', ''))));
+    }
+  }
+
+  Future<void> _manageCategories(
+      List<dynamic> categories, List<dynamic> candidates) async {
+    final newCategoryController = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Catégories du brouillon'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              Expanded(
+                  child: TextField(
+                      controller: newCategoryController,
+                      decoration: const InputDecoration(
+                          hintText: 'Nouvelle catégorie'))),
+              IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () async {
+                    final name = newCategoryController.text.trim();
+                    if (name.isEmpty) return;
+                    try {
+                      await _service.addCategory(widget.campaignId, name);
+                      newCategoryController.clear();
+                      if (mounted) {
+                        Navigator.pop(dialogContext);
+                        _load();
+                      }
+                    } catch (error) {
+                      if (mounted)
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(error
+                                .toString()
+                                .replaceFirst('Exception: ', ''))));
+                    }
+                  })
+            ]),
+            const Divider(),
+            ...categories.map((category) {
+              final categoryId =
+                  int.tryParse(category['category_id'].toString()) ?? 0;
+              final count = candidates
+                  .where((candidate) =>
+                      int.tryParse(
+                          candidate['category_id']?.toString() ?? '') ==
+                      categoryId)
+                  .length;
+              return ListTile(
+                dense: true,
+                title: Text(category['name'] ?? ''),
+                subtitle: Text('$count candidat(s)'),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      tooltip: 'Renommer',
+                      onPressed: () async {
+                        final controller =
+                            TextEditingController(text: category['name'] ?? '');
+                        final name = await showDialog<String>(
+                            context: dialogContext,
+                            builder: (context) => AlertDialog(
+                                    title: const Text('Renommer la catégorie'),
+                                    content: TextField(controller: controller),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Annuler')),
+                                      FilledButton(
+                                          onPressed: () => Navigator.pop(
+                                              context, controller.text.trim()),
+                                          child: const Text('Enregistrer'))
+                                    ]));
+                        if (name != null && name.isNotEmpty) {
+                          await _service.updateCategory(categoryId, name);
+                          if (mounted) {
+                            Navigator.pop(dialogContext);
+                            _load();
+                          }
+                        }
+                      }),
+                  if (count == 0)
+                    IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            color: AppColors.redAccent),
+                        tooltip: 'Supprimer',
+                        onPressed: () async {
+                          await _service.deleteCategory(categoryId);
+                          if (mounted) {
+                            Navigator.pop(dialogContext);
+                            _load();
+                          }
+                        }),
+                ]),
+              );
+            }),
+          ]),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Fermer'))
+        ],
+      ),
+    );
+    newCategoryController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -468,7 +766,10 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
       appBar: AppBar(
         title: Text(
           'Gestion de Campagne',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: theme.colorScheme.onSurface),
+          style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: theme.colorScheme.onSurface),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -485,11 +786,14 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: AppColors.redAccent, size: 40),
+                    const Icon(Icons.error_outline_rounded,
+                        color: AppColors.redAccent, size: 40),
                     const SizedBox(height: 12),
-                    Text('${snapshot.error}'.replaceAll('Exception: ', ''), textAlign: TextAlign.center),
+                    Text('${snapshot.error}'.replaceAll('Exception: ', ''),
+                        textAlign: TextAlign.center),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _load, child: const Text('Réessayer')),
+                    ElevatedButton(
+                        onPressed: _load, child: const Text('Réessayer')),
                   ],
                 ),
               ),
@@ -505,6 +809,7 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
           final computedStatus = campaign['computed_status'] ?? 'live';
           final isLive = computedStatus == 'live';
           final isDraft = computedStatus == 'draft';
+          final isSuspended = computedStatus == 'suspended';
 
           return RefreshIndicator(
             onRefresh: () async => _load(),
@@ -526,40 +831,58 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              isLive ? '● En Direct' : (isDraft ? '📝 Brouillon' : 'Clôturé'),
+                              isLive
+                                  ? '● En Direct'
+                                  : (isDraft
+                                      ? 'Brouillon'
+                                      : (isSuspended
+                                          ? 'Suspendue'
+                                          : 'Clôturée')),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: isLive
                                     ? AppColors.greenAccent
-                                    : (isDraft ? AppColors.orangeAccent : theme.colorScheme.onSurfaceVariant),
+                                    : (isDraft
+                                        ? AppColors.orangeAccent
+                                        : (isSuspended
+                                            ? AppColors.redAccent
+                                            : theme
+                                                .colorScheme.onSurfaceVariant)),
                               ),
                             ),
                           ),
                           Row(
                             children: [
-                              IconButton(
-                                onPressed: () => _showEditCampaignModal(campaign),
-                                icon: const Icon(Icons.edit_outlined, size: 18),
-                                tooltip: 'Modifier les détails',
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => CampaignDetailPage(campaignId: widget.campaignId),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                                tooltip: 'Page publique',
-                              ),
+                              if (isDraft)
+                                IconButton(
+                                  onPressed: () =>
+                                      _showEditCampaignModal(campaign),
+                                  icon:
+                                      const Icon(Icons.edit_outlined, size: 18),
+                                  tooltip: 'Modifier le brouillon',
+                                ),
+                              if (!isSuspended)
+                                IconButton(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => CampaignDetailPage(
+                                            campaignId: widget.campaignId),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.open_in_new_rounded,
+                                      size: 18),
+                                  tooltip: 'Page publique',
+                                ),
                             ],
                           ),
                         ],
@@ -567,13 +890,28 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                       const SizedBox(height: 8),
                       Text(
                         campaign['title'] ?? '',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.onSurface),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         campaign['description'] ?? '',
-                        style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant),
                       ),
+                      if (isSuspended &&
+                          (campaign['suspension_reason'] ?? '')
+                              .toString()
+                              .isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                            'Motif de suspension : ${campaign['suspension_reason']}',
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.redAccent)),
+                      ],
                       const SizedBox(height: 16),
 
                       // Actions de statut
@@ -583,18 +921,30 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () => _handleStatusAction('publish'),
-                                icon: const Icon(Icons.rocket_launch_rounded, size: 16),
-                                label: const Text('Publier la Campagne', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.greenAccent, foregroundColor: Colors.white),
+                                icon: const Icon(Icons.rocket_launch_rounded,
+                                    size: 16),
+                                label: const Text('Publier la Campagne',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.greenAccent,
+                                    foregroundColor: Colors.white),
                               ),
                             ),
                           if (isLive)
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () => _handleStatusAction('close'),
-                                icon: const Icon(Icons.lock_clock_rounded, size: 16),
-                                label: const Text('Clôturer les Votes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.redAccent, foregroundColor: Colors.white),
+                                icon: const Icon(Icons.lock_clock_rounded,
+                                    size: 16),
+                                label: const Text('Clôturer les Votes',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.redAccent,
+                                    foregroundColor: Colors.white),
                               ),
                             ),
                         ],
@@ -608,15 +958,18 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMiniStat(theme, 'TOTAL VOTES', _formatNumber(stats['totalVotes'] ?? 0)),
+                      child: _buildMiniStat(theme, 'TOTAL VOTES',
+                          _formatNumber(stats['totalVotes'] ?? 0)),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _buildMiniStat(theme, 'REVENU BRUT', '${_formatNumber(stats['totalRevenue'] ?? 0)} F'),
+                      child: _buildMiniStat(theme, 'REVENU BRUT',
+                          '${_formatNumber(stats['totalRevenue'] ?? 0)} F'),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _buildMiniStat(theme, 'CANDIDATS', '${candidates.length}'),
+                      child: _buildMiniStat(
+                          theme, 'CANDIDATS', '${candidates.length}'),
                     ),
                   ],
                 ),
@@ -628,19 +981,35 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                   children: [
                     Text(
                       'Candidats (${candidates.length})',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.onSurface),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showAddCandidateModal(categories),
-                      icon: const Icon(Icons.add_rounded, size: 16),
-                      label: const Text('Ajouter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    if (isDraft) ...[
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _manageCategories(categories, candidates),
+                        icon: const Icon(Icons.category_outlined, size: 16),
+                        label: const Text('Catégories',
+                            style: TextStyle(fontSize: 12)),
                       ),
-                    ),
+                      ElevatedButton.icon(
+                        onPressed: () => _showAddCandidateModal(categories),
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: const Text('Ajouter',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -656,7 +1025,9 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                       child: Text(
                         'Aucun candidat pour le moment. Cliquez sur "Ajouter" pour commencer.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ),
                   )
@@ -673,23 +1044,83 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                           children: [
                             CircleAvatar(
                               radius: 20,
-                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                              child: Text('#${cand['candidate_number']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              child: Text('#${cand['candidate_number']}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(cand['name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-                                  Text('${cand['category_name'] ?? 'Général'} • ${cand['total_votes']} votes', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                                  Text(cand['name'] ?? '',
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.onSurface)),
+                                  Text(
+                                      '${cand['category_name'] ?? 'Général'} • ${cand['total_votes']} votes',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant)),
                                 ],
                               ),
                             ),
                             Text(
                               '${_formatNumber(cand['candidate_revenue'] ?? 0)} F',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.greenAccent),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.greenAccent),
                             ),
+                            if (isDraft)
+                              PopupMenuButton<String>(
+                                tooltip: 'Actions candidat',
+                                onSelected: (action) async {
+                                  final candidate =
+                                      Map<String, dynamic>.from(cand);
+                                  if (action == 'edit') {
+                                    await _editCandidate(candidate, categories);
+                                  } else {
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (dialogContext) => AlertDialog(
+                                        title: const Text(
+                                            'Supprimer ce candidat ?'),
+                                        content: Text(
+                                            '« ${candidate['name']} » sera retiré du brouillon.'),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () => Navigator.pop(
+                                                  dialogContext, false),
+                                              child: const Text('Annuler')),
+                                          FilledButton(
+                                              onPressed: () => Navigator.pop(
+                                                  dialogContext, true),
+                                              child: const Text('Supprimer')),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirmed == true) {
+                                      await _service.deleteCandidate(
+                                          (candidate['candidate_id'] as num)
+                                              .toInt());
+                                      _load();
+                                    }
+                                  }
+                                },
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(
+                                      value: 'edit', child: Text('Modifier')),
+                                  PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Supprimer')),
+                                ],
+                              ),
                           ],
                         ),
                       )),
@@ -711,9 +1142,17 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
       ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface)),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurfaceVariant)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
     );

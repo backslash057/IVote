@@ -9,6 +9,7 @@ class Campaign {
   final int candidateCount;
   final int totalVotes;
   final String? categories;
+  final String? suspensionReason;
 
   Campaign({
     required this.id,
@@ -21,6 +22,7 @@ class Campaign {
     required this.candidateCount,
     required this.totalVotes,
     this.categories,
+    this.suspensionReason,
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
@@ -29,12 +31,15 @@ class Campaign {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       imageUrl: json['image_url'],
-      pricePerVote: int.tryParse(json['price_per_vote']?.toString() ?? '100') ?? 100,
+      pricePerVote:
+          int.tryParse(json['price_per_vote']?.toString() ?? '100') ?? 100,
       status: json['status'] ?? (json['is_draft'] == 1 ? 'draft' : 'active'),
       organizerName: json['organizer_name'],
-      candidateCount: int.tryParse(json['candidate_count']?.toString() ?? '0') ?? 0,
+      candidateCount:
+          int.tryParse(json['candidate_count']?.toString() ?? '0') ?? 0,
       totalVotes: int.tryParse(json['totalVotes']?.toString() ?? '0') ?? 0,
       categories: json['categories'],
+      suspensionReason: json['suspension_reason'],
     );
   }
 }
@@ -77,12 +82,14 @@ class CampaignDetail {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       imageUrl: json['image_url'],
-      pricePerVote: int.tryParse(json['price_per_vote']?.toString() ?? '100') ?? 100,
+      pricePerVote:
+          int.tryParse(json['price_per_vote']?.toString() ?? '100') ?? 100,
       status: json['computed_status'] ?? json['status'] ?? 'active',
       organizerName: json['organizer_name'],
       dateCloture: json['date_cloture'],
       totalVotes: int.tryParse(json['totalVotes']?.toString() ?? '0') ?? 0,
-      candidateCount: int.tryParse(json['candidateCount']?.toString() ?? '0') ?? 0,
+      candidateCount:
+          int.tryParse(json['candidateCount']?.toString() ?? '0') ?? 0,
       categories: categoriesList,
     );
   }
@@ -106,7 +113,10 @@ class CampaignCategory {
         [];
 
     return CampaignCategory(
-      id: int.tryParse(json['id']?.toString() ?? json['category_id']?.toString() ?? '0') ?? 0,
+      id: int.tryParse(json['id']?.toString() ??
+              json['category_id']?.toString() ??
+              '0') ??
+          0,
       name: json['name'] ?? '',
       candidates: candidatesList,
     );
@@ -140,8 +150,14 @@ class Candidate {
 
   factory Candidate.fromJson(Map<String, dynamic> json) {
     return Candidate(
-      id: int.tryParse(json['id']?.toString() ?? json['candidate_id']?.toString() ?? '0') ?? 0,
-      number: int.tryParse(json['number']?.toString() ?? json['candidate_number']?.toString() ?? '0') ?? 0,
+      id: int.tryParse(json['id']?.toString() ??
+              json['candidate_id']?.toString() ??
+              '0') ??
+          0,
+      number: int.tryParse(json['number']?.toString() ??
+              json['candidate_number']?.toString() ??
+              '0') ??
+          0,
       name: json['name'] ?? '',
       age: json['age'] != null ? int.tryParse(json['age'].toString()) : null,
       theme: json['theme'],
@@ -149,7 +165,9 @@ class Candidate {
       bio: json['bio'],
       imageUrl: json['image_url'],
       votes: int.tryParse(json['votes']?.toString() ?? '0') ?? 0,
-      percentage: (json['percentage'] is num) ? (json['percentage'] as num).toDouble() : 0.0,
+      percentage: (json['percentage'] is num)
+          ? (json['percentage'] as num).toDouble()
+          : 0.0,
     );
   }
 }

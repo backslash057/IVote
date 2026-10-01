@@ -1,3 +1,16 @@
+<?php
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AuthController.php';
+$authController = new AuthController();
+$session = $authController->me();
+if (empty($session['success']) || empty($session['user'])) {
+    header('Location: /login');
+    exit;
+}
+if (($session['user']['role'] ?? '') !== 'organizer') {
+    header('Location: /admin');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
@@ -65,6 +78,10 @@
 
                     <!-- Profil & Déconnexion -->
                     <div id="user-badge" class="flex items-center gap-2 pl-2 border-l border-bordercustom">
+                        <a href="/notifications" class="relative p-2 text-fore-secondary hover:text-fore" aria-label="Notifications">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                            <span id="notification-count" class="hidden absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] text-white"></span>
+                        </a>
                         <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface-secondary border border-bordercustom text-xs">
                             <div id="user-avatar" class="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">
                                 --
@@ -105,6 +122,7 @@
             <a href="/" class="block py-2 text-sm font-medium text-fore-secondary">Accueil</a>
             <a href="/campaigns" class="block py-2 text-sm font-medium text-fore-secondary">Explorer les campagnes</a>
             <a href="/dashboard" class="block py-2 text-sm font-semibold text-primary">Espace organisateur</a>
+            <a href="/notifications" class="block py-2 text-sm font-medium text-fore-secondary">Notifications</a>
             <div class="pt-3 border-t border-bordercustom flex items-center justify-between">
                 <span id="mobile-user-name" class="text-xs font-semibold text-fore">Organisateur</span>
                 <a href="/logout" class="text-xs font-bold text-red-500 hover:underline">Déconnexion</a>
@@ -353,6 +371,7 @@
 
     <!-- Scripts -->
     <script src="/public/js/theme_toggle.js"></script>
+    <script src="/public/js/notification_badge.js" defer></script>
     <script>
         function escapeHtml(str) {
             if (!str) return '';
@@ -454,6 +473,7 @@
                     const status = campaign.status || 'draft';
                     const isActive = status === 'active';
                     const isDraft = status === 'draft';
+                    const isSuspended = status === 'suspended';
                     const title = escapeHtml(campaign.title || 'Campagne sans titre');
                     const organizer = escapeHtml(campaign.organizer_name || 'Comité Organisateur');
                     const description = escapeHtml(campaign.description || 'Participez à cette campagne de vote.');
@@ -483,9 +503,15 @@
                         badgeHtml = `<span class="bg-surface/90 backdrop-blur-md text-amber-500 text-[10px] font-bold px-2.5 py-1 rounded-md border border-bordercustom shadow-sm flex items-center gap-1">
                                         <span>📝 Brouillon</span>
                                      </span>`;
+                    } else if (isSuspended) {
+                        badgeHtml = `<span class="bg-red-500/10 text-red-600 text-[10px] font-bold px-2.5 py-1 rounded-md border border-red-500/20" title="${escapeHtml(campaign.suspension_reason || '')}">Campagne suspendue</span>`;
+                    } else if (status === 'pending_review') {
+                        badgeHtml = `<span class="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-2.5 py-1 rounded-md border border-amber-500/20">En validation</span>`;
+                    } else if (status === 'archived') {
+                        badgeHtml = `<span class="bg-surface/90 text-fore-secondary text-[10px] font-bold px-2.5 py-1 rounded-md border border-bordercustom">Archivée</span>`;
                     } else {
                         badgeHtml = `<span class="bg-surface/90 backdrop-blur-md text-fore-secondary text-[10px] font-bold px-2.5 py-1 rounded-md border border-bordercustom shadow-sm">
-                                        Terminé
+                                        Clôturée
                                      </span>`;
                     }
 
@@ -502,6 +528,7 @@
                                     <span class="text-xs text-primary font-semibold block">${organizer}</span>
                                     <h2 class="text-base font-bold text-fore leading-snug line-clamp-1" title="${title}">${title}</h2>
                                     <p class="text-xs text-fore-secondary line-clamp-2 leading-relaxed">${description}</p>
+                                    ${isSuspended && campaign.suspension_reason ? `<p class="text-[11px] text-red-600">Motif : ${escapeHtml(campaign.suspension_reason)}</p>` : ''}
                                 </div>
                             </div>
 

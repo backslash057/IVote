@@ -19,9 +19,9 @@ class CategoryController extends BaseController {
      * POST /api/campaigns/{id}/categories
      */
     public function store(string|int $id): array {
-        $user = $this->requireAuth();
+        $user = $this->requireOrganizer();
         if (!$user) {
-            return ['success' => false, 'message' => 'Non authentifié.'];
+            return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
         }
 
         $campaignId = (int)$id;
@@ -38,6 +38,11 @@ class CategoryController extends BaseController {
             return ['success' => false, 'message' => 'Action non autorisée.'];
         }
 
+        if (!$this->isCampaignEditable($campaignId)) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Les catégories ne peuvent être modifiées qu’avant la publication.'];
+        }
+
         $categoryId = $this->findOrCreateCategory($campaignId, $name);
 
         http_response_code(201);
@@ -46,6 +51,63 @@ class CategoryController extends BaseController {
             'category_id' => $categoryId,
             'message' => 'Catégorie créée avec succès.'
         ];
+    }
+
+    public function delete(string|int $id): array {
+        $user = $this->requireOrganizer();
+        if (!$user) return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
+
+        $categoryId = (int)$id;
+        $stmt = $this->db->prepare("SELECT campaign_id FROM Category WHERE category_id = ? AND campaign_id IN (SELECT campaign_id FROM Campaign WHERE organiser_id = ?)");
+        $stmt->execute([$categoryId, (int)$user['user_id']]);
+        $campaignId = (int)$stmt->fetchColumn();
+        if (!$campaignId || !$this->isCampaignEditable($campaignId)) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Cette catégorie ne peut être supprimée qu’avant la publication.'];
+        }
+
+        $count = $this->db->prepare("SELECT COUNT(*) FROM Candidate WHERE category_id = ?");
+        $count->execute([$categoryId]);
+        if ((int)$count->fetchColumn() > 0) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Supprimez ou déplacez d’abord les candidats de cette catégorie.'];
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM Category WHERE category_id = ?");
+        $stmt->execute([$categoryId]);
+        return ['success' => true, 'message' => 'Catégorie supprimée avec succès.'];
+    }
+
+    public function update(string|int $id): array {
+        $user = $this->requireOrganizer();
+        if (!$user) return ['success' => false, 'message' => 'Authentification et rôle organisateur requis.'];
+
+        $categoryId = (int)$id;
+        $name = trim((string)($this->getRequestData()['name'] ?? ''));
+        if ($categoryId <= 0 || $name === '') {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le nom de la catégorie est obligatoire.'];
+        }
+
+        $stmt = $this->db->prepare("SELECT campaign_id FROM Category WHERE category_id = ? AND campaign_id IN (SELECT campaign_id FROM Campaign WHERE organiser_id = ?)");
+        $stmt->execute([$categoryId, (int)$user['user_id']]);
+        $campaignId = (int)$stmt->fetchColumn();
+        if (!$campaignId || !$this->isCampaignEditable($campaignId)) {
+            http_response_code(409);
+            return ['success' => false, 'message' => 'Cette catégorie ne peut être modifiée qu’avant la publication.'];
+        }
+
+        $stmt = $this->db->prepare("UPDATE Category SET name = ? WHERE category_id = ?");
+        try {
+            $stmt->execute([$name, $categoryId]);
+        } catch (PDOException $error) {
+            if ($error->getCode() === '23000') {
+                http_response_code(409);
+                return ['success' => false, 'message' => 'Une catégorie porte déjà ce nom dans cette campagne.'];
+            }
+            throw $error;
+        }
+        return ['success' => true, 'message' => 'Catégorie modifiée.'];
     }
 
     /**

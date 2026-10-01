@@ -11,6 +11,10 @@ if (empty($authResult['success']) || empty($authResult['user'])) {
 }
 
 $currentUser = $authResult['user'];
+if (($currentUser['role'] ?? '') !== 'organizer') {
+    header('Location: /admin');
+    exit;
+}
 $campaignId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $campaignController = new CampaignController();
 $dashboardResult = $campaignController->dashboard($campaignId);
@@ -93,6 +97,10 @@ $candidateCount = count($candidates);
 
                 <!-- Actions: Dark Theme & Buttons -->
                 <div class="hidden md:flex items-center gap-3">
+                    <a href="/notifications" class="relative p-2 text-fore-secondary hover:text-fore" aria-label="Notifications">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                        <span id="notification-count" class="hidden absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] text-white"></span>
+                    </a>
                     <button id="theme-toggle" class="p-2.5 rounded-xl border border-bordercustom hover:bg-surface-secondary text-fore transition" aria-label="Basculer le mode sombre">
                         <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="5"></circle>
@@ -145,6 +153,7 @@ $candidateCount = count($candidates);
             <a href="/" class="block py-2 text-sm font-medium text-fore-secondary">Accueil</a>
             <a href="/campaigns" class="block py-2 text-sm font-medium text-fore-secondary">Explorer les campagnes</a>
             <a href="/dashboard" class="block py-2 text-sm font-medium text-fore-secondary">Espace organisateur</a>
+            <a href="/notifications" class="block py-2 text-sm font-medium text-fore-secondary">Notifications</a>
             <div class="pt-3 border-t border-bordercustom">
                 <a href="/campaigns/<?= (int)$campaign['campaign_id'] ?>" target="_blank" class="block w-full text-center py-2.5 font-semibold bg-primary text-white rounded-xl text-xs">Voir page publique</a>
             </div>
@@ -167,10 +176,12 @@ $candidateCount = count($candidates);
                     </div>
                 <?php endif; ?>
 
+                <?php if ($campaign['computed_status'] === 'draft'): ?>
                 <button onclick="toggleModal('photoModal', true)" class="absolute inset-0 flex items-center justify-center gap-2 text-white bg-black/50 opacity-0 group-hover:opacity-100 transition duration-200 font-bold text-xs sm:text-sm cursor-pointer">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     Changer l'affiche (16:9)
                 </button>
+                <?php endif; ?>
             </div>
 
             <div class="p-6 sm:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 border-t border-bordercustom">
@@ -186,6 +197,8 @@ $candidateCount = count($candidates);
                             <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-500/10 text-green-600 border border-green-500/20 flex items-center gap-1.5">
                                 <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> En direct
                             </span>
+                        <?php elseif ($campaign['computed_status'] === 'suspended'): ?>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/10 text-red-600 border border-red-500/20">Suspendue</span>
                         <?php else: ?>
                             <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-surface border border-bordercustom text-fore-secondary">Clôturé</span>
                         <?php endif; ?>
@@ -193,6 +206,9 @@ $candidateCount = count($candidates);
 
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-fore"><?= htmlspecialchars($campaign['title'], ENT_QUOTES, 'UTF-8') ?></h1>
                     <p class="text-xs sm:text-sm text-fore-secondary max-w-2xl leading-relaxed"><?= htmlspecialchars($campaign['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <?php if ($campaign['computed_status'] === 'suspended'): ?>
+                        <p class="text-xs font-semibold text-red-600">Motif : <?= htmlspecialchars($campaign['suspension_reason'] ?: 'Contactez IVote pour plus de détails.', ENT_QUOTES, 'UTF-8') ?></p>
+                    <?php endif; ?>
                     
                     <div class="flex flex-wrap items-center gap-4 text-xs text-fore-secondary pt-1">
                         <span>Tarif : <strong class="text-fore font-bold"><?= (int)$campaign['price_per_vote'] ?> FCFA / vote</strong></span>
@@ -203,10 +219,12 @@ $candidateCount = count($candidates);
 
                 <!-- Actions de statut -->
                 <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                    <?php if ($campaign['computed_status'] === 'draft'): ?>
                     <button onclick="toggleModal('editCampaignModal', true)" class="px-3.5 py-2 rounded-xl bg-surface border border-bordercustom hover:bg-surface-secondary text-fore text-xs font-bold flex items-center gap-1.5 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         Modifier
                     </button>
+                    <?php endif; ?>
 
                     <?php if ($campaign['computed_status'] === 'draft'): ?>
                         <button onclick="updateCampaignAction('publish')" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
@@ -216,7 +234,7 @@ $candidateCount = count($candidates);
                         <button onclick="updateCampaignAction('close')" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm">
                             Clôturer la campagne
                         </button>
-                    <?php else: ?>
+                    <?php elseif ($campaign['computed_status'] === 'closed'): ?>
                         <button onclick="toggleModal('relaunchModal', true)" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
                             Relancer la campagne
                         </button>
@@ -281,11 +299,28 @@ $candidateCount = count($candidates);
                         <h3 class="text-base font-bold text-fore">Liste des Candidats</h3>
                         <p class="text-xs text-fore-secondary">Gérez les fiches et les dossards de vos participants.</p>
                     </div>
+                    <?php if ($campaign['computed_status'] === 'draft'): ?>
                     <button onclick="toggleModal('candidateModal', true)" class="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold flex items-center gap-2 transition shadow-md">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Ajouter un candidat</span>
                     </button>
+                    <?php endif; ?>
                 </div>
+
+                <?php if ($campaign['computed_status'] === 'draft'): ?>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <?php foreach ($categories as $category): ?>
+                            <span class="inline-flex items-center gap-1 rounded-full border border-bordercustom bg-surface px-3 py-1 text-xs">
+                                <?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?>
+                                <button type="button" class="category-rename text-primary" data-category-id="<?= (int)$category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?>" aria-label="Renommer catégorie">✎</button>
+                                <?php if (!array_filter($candidates, static fn(array $candidate): bool => (int)($candidate['category_id'] ?? 0) === (int)$category['category_id'])): ?>
+                                    <button type="button" class="category-delete text-red-500" data-category-id="<?= (int)$category['category_id'] ?>" aria-label="Supprimer catégorie">×</button>
+                                <?php endif; ?>
+                            </span>
+                        <?php endforeach; ?>
+                        <button type="button" id="addCategoryBtn" class="rounded-full border border-primary px-3 py-1 text-xs font-bold text-primary">+ Catégorie</button>
+                    </div>
+                <?php endif; ?>
 
                 <div class="overflow-x-auto rounded-2xl border border-bordercustom bg-surface">
                     <table class="w-full text-left text-xs sm:text-sm">
@@ -296,12 +331,13 @@ $candidateCount = count($candidates);
                                 <th class="py-3 px-4">Thème / Profil</th>
                                 <th class="py-3 px-4 text-right">Votes</th>
                                 <th class="py-3 px-4 text-right">Recettes</th>
+                                <?php if ($campaign['computed_status'] === 'draft'): ?><th class="py-3 px-4 text-right">Actions</th><?php endif; ?>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-bordercustom text-fore">
                             <?php if (empty($candidates)): ?>
                                 <tr>
-                                    <td colspan="5" class="py-8 text-center text-fore-secondary">Aucun candidat pour le moment. Cliquez sur "Ajouter un candidat".</td>
+                                    <td colspan="<?= $campaign['computed_status'] === 'draft' ? 6 : 5 ?>" class="py-8 text-center text-fore-secondary">Aucun candidat pour le moment. Cliquez sur "Ajouter un candidat".</td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($candidates as $cand): ?>
@@ -330,6 +366,12 @@ $candidateCount = count($candidates);
                                         <td class="py-3.5 px-4 text-fore-secondary"><?= htmlspecialchars($cand['theme'] ?? 'Non spécifié', ENT_QUOTES, 'UTF-8') ?></td>
                                         <td class="py-3.5 px-4 text-right font-mono font-bold text-fore"><?= number_format($cand['total_votes']) ?></td>
                                         <td class="py-3.5 px-4 text-right font-mono font-bold text-primary"><?= formatFCFA($cand['revenue']) ?></td>
+                                        <?php if ($campaign['computed_status'] === 'draft'): ?>
+                                            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                                <button type="button" class="candidate-edit text-primary font-bold" data-candidate-id="<?= (int)$cand['candidate_id'] ?>" data-name="<?= htmlspecialchars($cand['name'], ENT_QUOTES, 'UTF-8') ?>" data-number="<?= (int)$cand['candidate_number'] ?>" data-age="<?= (int)($cand['age'] ?? 0) ?>" data-theme="<?= htmlspecialchars($cand['theme'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-description="<?= htmlspecialchars($cand['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-bio="<?= htmlspecialchars($cand['bio'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-category-id="<?= (int)($cand['category_id'] ?? 0) ?>">Modifier</button>
+                                                <button type="button" class="candidate-delete ml-3 text-red-500 font-bold" data-candidate-id="<?= (int)$cand['candidate_id'] ?>" data-name="<?= htmlspecialchars($cand['name'], ENT_QUOTES, 'UTF-8') ?>">Supprimer</button>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -773,6 +815,7 @@ $candidateCount = count($candidates);
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="/public/js/theme_toggle.js"></script>
+    <script src="/public/js/notification_badge.js" defer></script>
     <script src="/public/js/campaign_dashboard.js"></script>
 </body>
 </html>
