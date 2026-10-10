@@ -1,1 +1,19 @@
 build
+
+# Configuration & secrets
+.env
+.env.*
+!.env.example
+*.env
+
+# Fichiers d'upload des utilisateurs (ne jamais versionner)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Dépendances & artefacts
+backend/vendor/
+*.log
+
+# Système
+.DS_Store
+Thumbs.db

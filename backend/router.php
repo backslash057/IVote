@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/bootstrap.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/utils/http.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AuthController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CategoryController.php';
@@ -99,12 +101,7 @@ $requestUri = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/'
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Handle Preflight OPTIONS for CORS
-if ($method === 'OPTIONS' && str_starts_with($requestUri, '/api/')) {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    header('Access-Control-Max-Age: 86400');
-    http_response_code(204);
+if (http_handle_cors_preflight()) {
     exit;
 }
 
@@ -128,9 +125,7 @@ foreach ($urlpatterns as $route) {
         } else {
             // API Action Execution
             header('Content-Type: application/json; charset=utf-8');
-            header('Access-Control-Allow-Origin: *');
-            header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, Authorization');
+            http_send_cors_headers();
 
             try {
                 [$controllerName, $action] = explode('@', $route->target);
@@ -140,10 +135,12 @@ foreach ($urlpatterns as $route) {
                 echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             } catch (Throwable $e) {
                 http_response_code(500);
+                error_log('[IVote] Erreur API non gérée sur ' . $method . ' ' . $requestUri . ' : '
+                    . get_class($e) . ': ' . $e->getMessage()
+                    . ' à ' . $e->getFile() . ':' . $e->getLine());
                 echo json_encode([
                     "success" => false,
                     "message" => "Une erreur interne est survenue.",
-                    "error"   => $e->getMessage(),
                 ], JSON_UNESCAPED_UNICODE);
             }
         }
@@ -152,12 +149,35 @@ foreach ($urlpatterns as $route) {
 }
 
 if (!$routeFound) {
-    $staticFilePath = $_SERVER["DOCUMENT_ROOT"] . $requestUri;
+    // Résolution réelle du chemin : interdit toute traversée (../) hors des
+    // deux seuls répertoires publics autorisés.
+    $documentRoot = realpath($_SERVER["DOCUMENT_ROOT"]);
+    $staticFilePath = $documentRoot !== false ? realpath($documentRoot . $requestUri) : false;
+
+    $allowedDirectories = [];
+    if ($documentRoot !== false) {
+        foreach (['/public', '/uploads'] as $subDirectory) {
+            $resolved = realpath($documentRoot . $subDirectory);
+            if ($resolved !== false) {
+                $allowedDirectories[] = $resolved . DIRECTORY_SEPARATOR;
+            }
+        }
+    }
+
+    $isAllowedFile = false;
+    if ($staticFilePath !== false && is_file($staticFilePath)) {
+        foreach ($allowedDirectories as $directory) {
+            if (str_starts_with($staticFilePath, $directory)) {
+                $isAllowedFile = true;
+                break;
+            }
+        }
+    }
 
     if (
-        $method === "GET" && 
+        $method === "GET" &&
         (str_starts_with($requestUri, "/public/") || str_starts_with($requestUri, "/uploads/")) &&
-        is_file($staticFilePath)
+        $isAllowedFile
     ) {
         $mimeTypes = [
             'css'  => 'text/css',
@@ -190,7 +210,7 @@ if (!$routeFound) {
         http_response_code(404);
         if (str_starts_with($requestUri, '/api/')) {
             header('Content-Type: application/json; charset=utf-8');
-            header('Access-Control-Allow-Origin: *');
+            http_send_cors_headers();
             echo json_encode(["success" => false, "message" => "Point d'entrée API introuvable."]);
         } else {
             require_once $_SERVER["DOCUMENT_ROOT"] . "/routes/404.html";

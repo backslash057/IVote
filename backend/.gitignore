@@ -1,0 +1,10 @@
+# Secrets locaux — jamais versionnés (règle doublée au niveau racine).
+.env
+.env.*
+!.env.example
+
+# Uploads d'utilisateurs — reconstruits à l'exécution.
+uploads/*
+!.gitkeep
+
+vendor/

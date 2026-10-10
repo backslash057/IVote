@@ -35,6 +35,17 @@ class VoteController extends BaseController {
      * POST /api/campaigns/{id}/votes
      */
     public function recordVote(string|int $id): array {
+        // Payment is still simulated, so this endpoint is the weakest link:
+        // throttle it hard enough to slow scripted abuse, while staying
+        // permissive for legitimate mobile carrier NAT pools.
+        $this->enforceRateLimit(
+            'vote_record',
+            $this->clientIp(),
+            60,
+            60,
+            'Trop de votes envoyés depuis cette adresse. Réessayez dans une minute.'
+        );
+
         $campaignId = (int)$id;
         $data = $this->getRequestData();
 

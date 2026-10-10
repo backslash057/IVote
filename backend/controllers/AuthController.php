@@ -14,6 +14,14 @@ class AuthController extends BaseController {
             return ['success' => false, 'message' => 'Email et mot de passe requis.'];
         }
 
+        $this->enforceRateLimit(
+            'auth_login',
+            $this->clientIp() . '|' . strtolower($email),
+            10,
+            300,
+            'Trop de tentatives de connexion. Réessayez dans quelques minutes.'
+        );
+
         $stmt = $this->db->prepare("SELECT user_id, name, email, password, role, status, session_version FROM Users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -56,6 +64,19 @@ class AuthController extends BaseController {
             return ['success' => false, 'message' => 'Tous les champs sont requis.'];
         }
 
+        if (strlen($password) < 8) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le mot de passe doit contenir au moins 8 caractères.'];
+        }
+
+        $this->enforceRateLimit(
+            'auth_signup',
+            $this->clientIp(),
+            20,
+            3600,
+            'Trop de comptes créés depuis cette adresse. Réessayez plus tard.'
+        );
+
         $stmt = $this->db->prepare("SELECT user_id FROM Users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->fetch()) {
@@ -91,7 +112,8 @@ class AuthController extends BaseController {
             "expires"  => time() - 3600,
             "path"     => "/",
             "httponly" => true,
-            "samesite" => "Strict"
+            "samesite" => "Strict",
+            "secure"   => http_request_is_https()
         ]);
 
         return ['success' => true, 'message' => 'Déconnexion réussie.'];
@@ -124,6 +146,14 @@ class AuthController extends BaseController {
         if (!$user) {
             return ['success' => false, 'message' => 'Non authentifié.'];
         }
+
+        $this->enforceRateLimit(
+            'auth_profile',
+            $this->clientIp(),
+            20,
+            300,
+            'Trop de modifications de profil. Réessayez dans quelques minutes.'
+        );
 
         $userId = (int)$user['user_id'];
         $data = $this->getRequestData();
@@ -162,14 +192,22 @@ class AuthController extends BaseController {
             }
 
             $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-            $stmtUpdate = $this->db->prepare("UPDATE Users SET name = ?, email = ?, password = ? WHERE user_id = ?");
+            $stmtUpdate = $this->db->prepare(
+                "UPDATE Users SET name = ?, email = ?, password = ?, session_version = session_version + 1 WHERE user_id = ?"
+            );
             $stmtUpdate->execute([$name, $email, $newHash, $userId]);
+
+            // Invalidate every other outstanding token for this account.
+            $stmtVersion = $this->db->prepare("SELECT session_version FROM Users WHERE user_id = ?");
+            $stmtVersion->execute([$userId]);
+            $sessionVersion = (int)$stmtVersion->fetchColumn();
         } else {
             $stmtUpdate = $this->db->prepare("UPDATE Users SET name = ?, email = ? WHERE user_id = ?");
             $stmtUpdate->execute([$name, $email, $userId]);
+            $sessionVersion = (int)($user['session_version'] ?? 0);
         }
 
-        $token = Tokenizer::generateToken($email, 2592000, (int)($user['session_version'] ?? 0));
+        $token = Tokenizer::generateToken($email, 2592000, $sessionVersion);
         $this->setAuthCookie($token);
 
         return [
@@ -231,6 +269,7 @@ class AuthController extends BaseController {
         setcookie("auth_token", $token, [
             "httponly" => true,
             "samesite" => "Strict",
+            "secure"   => http_request_is_https(),
             "expires"  => time() + (60 * 60 * 24 * 30),
             "path"     => "/"
         ]);

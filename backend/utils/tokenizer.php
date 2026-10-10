@@ -1,13 +1,19 @@
 <?php
 
+require_once dirname(__DIR__) . '/bootstrap.php';
+
 class Tokenizer {
     /**
-     * Retrieves secret key from environment or falls back to development key
+     * Returns the HMAC secret. Mandatory: bootstrap refuses to boot without it,
+     * so a missing secret can never silently downgrade to a forgeable one.
      */
     private static function secret(): string {
         $secret = getenv('IVOTE_JWT_SECRET');
         if ($secret === false || $secret === '') {
-            return 'ivote-dev-secret-change-me';
+            throw new RuntimeException('IVOTE_JWT_SECRET manquant : signature JWT impossible.');
+        }
+        if (strlen($secret) < 32) {
+            throw new RuntimeException('IVOTE_JWT_SECRET trop court : 32 caractères minimum.');
         }
         return $secret;
     }

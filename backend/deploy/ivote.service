@@ -1,0 +1,55 @@
+# =============================================================================
+#  IVote — service systemd (backend php -S)
+#
+#  TEMPLATE : __APP_ROOT__, __PORT__ et __RUN_USER__ sont remplacés par
+#  deploy/setup.sh (voir deploy/generated/ivote.service).
+#
+#  Installation par l'administrateur du VPS :
+#    sudo cp deploy/generated/ivote.service /etc/systemd/system/ivote.service
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now ivote
+#    sudo systemctl status ivote
+#
+#  Le backend n'écoute que sur 127.0.0.1 : seul nginx (reverse proxy) y accède.
+# =============================================================================
+
+[Unit]
+Description=IVote backend (PHP built-in server)
+Documentation=file://__APP_ROOT__/../backend/deploy/DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+# Si MariaDB tourne sur le même hôte, décommenter :
+# After=mariadb.service
+# Wants=mariadb.service
+
+[Service]
+Type=simple
+User=__RUN_USER__
+Group=__RUN_USER__
+WorkingDirectory=__APP_ROOT__
+
+# Configuration (DB_*, IVOTE_JWT_SECRET, IVOTE_PORT, IVOTE_TRUST_PROXY, ...).
+EnvironmentFile=__APP_ROOT__/.env
+
+# Débit : nombre de workers php -S. À décommenter UNIQUEMENT si l'extension
+# pcntl est disponible (`php -m | grep pcntl`).
+# Environment=PHP_CLI_SERVER_WORKERS=4
+
+ExecStart=/usr/bin/php -S 127.0.0.1:__PORT__ router.php
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+KillSignal=SIGINT
+
+# --- Durcissement -------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# Le répertoire des téléversements doit rester inscriptible (ImplicitWritePath).
+# ReadWritePaths=__APP_ROOT__/uploads
+
+[Install]
+WantedBy=multi-user.target

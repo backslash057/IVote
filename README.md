@@ -18,16 +18,27 @@ IVote est une plateforme de vote **monétisé** (paiement Mobile Money) disponib
 IVote/
 ├── backend/                         # API REST PHP 8.4 + MySQL
 │   ├── config.php                   # Credentials BDD via env (DB_*)
+│   ├── bootstrap.php                # Chargement .env + échec ferme
 │   ├── router.php                   # Routeur (web + API /api/*, CORS)
-│   ├── schema.sql                   # Schéma + seed organisateur
+│   ├── .env.example                 # Modèle de configuration
+│   ├── schema.sql                   # Schéma + seed super admin (production)
+│   ├── demo_seed.sql                # Données de démo locales (autoportant)
+│   ├── migrations/                  # Migrations SQL versionnées
 │   ├── controllers/
-│   │   ├── apiController.php        # Couche REST JSON (web/mobile)
-│   │   ├── authController.php       # login / signup / me (JWT)
-│   │   └── CampaignController.php   # campagnes, candidats, votes, retraits
+│   │   ├── BaseController.php       # Helpers (JSON, CORS, uploads, clientIp)
+│   │   ├── AuthController.php       # login / signup / me (JWT)
+│   │   ├── CampaignController.php   # campagnes, candidats, votes, retraits
+│   │   └── AdminController.php      # administration (super admin)
 │   ├── routes/                      # Pages web PHP (admin)
 │   ├── public/                      # Assets statiques
 │   ├── uploads/                     # Images candidates / campagnes
-│   └── utils/tokenizer.php          # JWT HS256 (signature + expiration)
+│   ├── utils/tokenizer.php          # JWT HS256 (signature + expiration)
+│   └── deploy/                      # Déploiement VPS
+│       ├── setup.sh                 # Installation initiale (sans sudo)
+│       ├── deploy.sh                # Mise à jour (git pull + migrations)
+│       ├── nginx.conf               # Template reverse proxy (admin)
+│       ├── ivote.service            # Template service systemd (admin)
+│       └── DEPLOYMENT.md            # Feuille de route de déploiement
 └── mobile/                          # App Flutter 3.24 (web + mobile)
     ├── lib/
     │   ├── main.dart                # Entrée MyApp → HomePage
@@ -49,18 +60,38 @@ IVote/
 
 ## 🔑 Configuration
 
-Le backend lit les secrets via variables d'environnement (fallbacks **dev** dans le code) :
+Le backend lit **toutes** ses secrets dans les variables d'environnement,
+avec repli sur le fichier `backend/.env` (jamais versionné).
 
-| Variable | Valeur par défaut (dev) |
-|---|---|
-| `DB_HOST` | `127.0.0.1` |
-| `DB_USER` | `backslash057` |
-| `DB_PASS` | `root` |
-| `DB_NAME` | `ivote` |
-| `IVOTE_JWT_SECRET` | clé de dev |
-| `API_BASE_URL` (Flutter) | `http://127.0.0.1:8080` |
+```bash
+cp backend/.env.example backend/.env
+# puis renseigner DB_* et IVOTE_JWT_SECRET
+```
 
-**Utilisateur seed** : `orga@gmail.com` / `TempOrga@123` (inséré par `schema.sql`).
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `DB_HOST` | non | défaut `127.0.0.1` |
+| `DB_PORT` | non | défaut `3306` |
+| `DB_NAME` | non | défaut `ivote` |
+| `DB_USER` | **oui** | utilisateur MySQL dédié |
+| `DB_PASS` | **oui** | mot de passe de cet utilisateur |
+| `IVOTE_JWT_SECRET` | **oui** | `openssl rand -hex 48` |
+| `IVOTE_ALLOWED_ORIGINS` | non | origines CORS du front web, séparées par `,` |
+| `IVOTE_TRUST_PROXY` | non | `1` pour accepter `X-Real-IP`/`X-Forwarded-For` (reverse proxy) |
+| `API_BASE_URL` (Flutter) | non | défaut `http://127.0.0.1:8080` |
+
+> **Échec ferme** : si `DB_USER`, `DB_PASS` ou `IVOTE_JWT_SECRET` manque,
+> le backend refuse de démarrer et répond 500. Aucun secret n'est plus
+> codé en dur dans le dépôt.
+
+**Seed de production (`schema.sql`)** : super admin `admin@ivote.cm` /
+`TempOrga@123` (rôle `super_admin`, mot de passe à changer après la première
+connexion — **ne jamais supprimer ce compte**).
+
+**Démo locale (`demo_seed.sql`)** : 3 organisateurs (`orga1@ivote.cm`,
+`orga2@ivote.cm`, `orga3@ivote.cm` / `TempOrga@123`), campagnes, candidats,
+votes et retraits. Autoportant + idempotent (ré-applicable sans doublons).
+**À ne pas appliquer en production.**
 
 ---
 
@@ -72,17 +103,20 @@ sudo systemctl start mariadb
 # 1re fois (ou après une réinstallation de MariaDB) :
 sudo mysql <<'SQL'
 CREATE DATABASE IF NOT EXISTS ivote CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'backslash057'@'localhost' IDENTIFIED BY 'root';
-CREATE USER 'backslash057'@'127.0.0.1' IDENTIFIED BY 'root';
-GRANT ALL PRIVILEGES ON ivote.* TO 'backslash057'@'localhost';
-GRANT ALL PRIVILEGES ON ivote.* TO 'backslash057'@'127.0.0.1';
+CREATE USER 'ivote_app'@'localhost' IDENTIFIED BY 'MOT_DE_PASSE_FORT';
+CREATE USER 'ivote_app'@'127.0.0.1' IDENTIFIED BY 'MOT_DE_PASSE_FORT';
+GRANT ALL PRIVILEGES ON ivote.* TO 'ivote_app'@'localhost';
+GRANT ALL PRIVILEGES ON ivote.* TO 'ivote_app'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
-mysql -h 127.0.0.1 -u backslash057 -proot ivote < backend/schema.sql
+mysql -h 127.0.0.1 -u ivote_app -p ivote < backend/schema.sql
+# (optionnel, local uniquement) données de démonstration :
+mysql -h 127.0.0.1 -u ivote_app -p ivote < backend/demo_seed.sql
 ```
 
 ### 2. Backend (API)
 ```bash
+cp backend/.env.example backend/.env   # puis renseigner les valeurs
 cd backend
 php -S 0.0.0.0:8080 router.php
 ```
@@ -103,6 +137,52 @@ cd mobile
 flutter build apk --dart-define=API_BASE_URL=http://<IP_MACHINE>:8080
 # APK : build/app/outputs/flutter-apk/app-release.apk
 ```
+
+---
+
+## 🌐 Déploiement VPS (nginx + `php -S`)
+
+Le déploiement est réalisé par **l'administrateur du VPS** avec sudo ; le
+backend est lancé en boucle locale derrière un reverse proxy nginx. Toute la
+procédure est documentée dans
+[`backend/deploy/DEPLOYMENT.md`](backend/deploy/DEPLOYMENT.md).
+
+```bash
+# 1) Installation initiale (une commande, en root)
+git clone https://github.com/backslash057/IVote.git ivote-setup
+cd ivote-setup/backend/deploy && sudo ./setup.sh
+#    → utilisateur système 'ivote', code dans /opt/ivote/app, .env généré,
+#      port libre choisi, base initialisée (auto si root MySQL), service
+#      systemd 'ivote' + nginx pour ivote.arited.org installés.
+
+# 2) HTTPS (recommandé)
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d ivote.arited.org
+
+# 3) Mises à jour
+cd /opt/ivote/app/backend/deploy && sudo ./deploy.sh   # git pull + migrations + restart
+```
+
+Architecture (le backend écoute en boucle locale, jamais exposé) :
+
+```
+Clients → https://ivote.arited.org → nginx
+            ├─ /public/  /uploads/*  → fichiers statiques
+            └─ /         → proxy → php -S 127.0.0.1:41824 (service ivote)
+```
+
+Points d'attention :
+
+1. `/opt/ivote/app/backend/.env` (chmod 600) renseigné avec `DB_USER`/`DB_PASS`
+   si la base n'a pas été initialisée automatiquement par `setup.sh`.
+2. Le routeur (`router.php`) est la **seule** cible proxifiée ; `config.php`,
+   `controllers/`, `routes/`, `.sql` répondent 404 depuis l'extérieur.
+3. HTTPS : `sudo certbot --nginx -d vosdomaines.tld` (activation automatique du
+   `secure` des cookies via `X-Forwarded-Proto`).
+4. `IVOTE_ALLOWED_ORIGINS` à renseigner si le front Flutter web est servi depuis
+   un autre domaine.
+5. Uploads : `client_max_body_size 8m` (nginx) et `upload_max_filesize` ≥ 6M
+   (php.ini) — au-delà, les images sont rejetées.
 
 ---
 
