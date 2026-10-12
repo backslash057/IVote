@@ -349,12 +349,14 @@ class CampaignService {
     required int candidateId,
     required int voteCount,
     required String paymentMethod,
+    String? phoneNumber,
   }) async {
     final headers = await _getHeaders();
     final body = jsonEncode({
       'candidate_id': candidateId,
       'vote_count': voteCount,
       'payment_method': paymentMethod,
+      if (phoneNumber != null && phoneNumber.isNotEmpty) 'phone_number': phoneNumber,
     });
 
     final response = await http.post(
@@ -370,5 +372,20 @@ class CampaignService {
       throw Exception(
           data['message'] ?? 'Erreur lors de l\'enregistrement du vote.');
     }
+  }
+
+  /// Sonde l'état d'un paiement AangaraaPay initié (paiement réel).
+  Future<Map<String, dynamic>> paymentStatus(String transactionRef) async {
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/api/votes/status/${Uri.encodeComponent(transactionRef)}'),
+      headers: {'Accept': 'application/json'},
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    }
+    throw Exception(
+        data['message'] ?? 'Impossible de récupérer le statut du paiement.');
   }
 }

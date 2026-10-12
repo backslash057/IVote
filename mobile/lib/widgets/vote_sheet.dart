@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/campaign.dart';
 import '../services/campaign_service.dart';
 import '../theme/app_theme.dart';
@@ -28,19 +30,43 @@ class _VoteBottomSheet extends StatefulWidget {
 class _VoteBottomSheetState extends State<_VoteBottomSheet> {
   int _voteCount = 1;
   String _paymentMethod = 'mtn_momo';
+  final _phoneController = TextEditingController();
   bool _isProcessing = false;
   String? _errorMessage;
 
   int get _calculatedPrice {
     final base = widget.campaign.pricePerVote * _voteCount;
     double discount = 1.0;
-    if (_voteCount >= 50) discount = 0.8;
-    else if (_voteCount >= 20) discount = 0.85;
-    else if (_voteCount >= 10) discount = 0.9;
+    if (_voteCount >= 50) {
+      discount = 0.8;
+    } else if (_voteCount >= 20) {
+      discount = 0.85;
+    } else if (_voteCount >= 10) {
+      discount = 0.9;
+    }
     return (base * discount).round();
   }
 
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  bool get _phoneIsValid {
+    final digits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 9) return digits.startsWith('6');
+    if (digits.length == 12) return digits.startsWith('2376');
+    return false;
+  }
+
   Future<void> _submitVote() async {
+    if (!_phoneIsValid) {
+      setState(() => _errorMessage =
+          'Indiquez le numéro Mobile Money au format 6XXXXXXXX ou 2376XXXXXXXX.');
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _errorMessage = null;
@@ -52,12 +78,31 @@ class _VoteBottomSheetState extends State<_VoteBottomSheet> {
         candidateId: widget.candidate.id,
         voteCount: _voteCount,
         paymentMethod: _paymentMethod,
+        phoneNumber: _phoneController.text,
       );
 
       if (!mounted) return;
 
       if (res['success'] == true) {
-        Navigator.of(context).pop(true);
+        if (res['pending'] == true) {
+          final confirmed = await showModalBottomSheet<bool>(
+            context: context,
+            isDismissible: false,
+            enableDrag: false,
+            backgroundColor: Colors.transparent,
+            builder: (_) => _PaymentPendingSheet(
+                transactionRef: res['transaction_ref']?.toString() ?? ''),
+          );
+          if (!mounted) return;
+          if (confirmed == true) {
+            Navigator.of(context).pop(true);
+          } else {
+            setState(() => _errorMessage =
+                'Paiement non confirmé. Le vote n\'a pas été enregistré.');
+          }
+        } else {
+          Navigator.of(context).pop(true);
+        }
       } else {
         setState(() => _errorMessage = res['message'] ?? 'Échec du paiement.');
       }
@@ -171,6 +216,43 @@ class _VoteBottomSheetState extends State<_VoteBottomSheet> {
           ),
           const SizedBox(height: 20),
 
+          // Numéro Mobile Money
+          Text(
+            'Numéro Mobile Money',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(13),
+            ],
+            decoration: InputDecoration(
+              hintText: 'Ex : 679123456',
+              prefixText: '+237 ',
+              prefixStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.outline),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.outline),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.primary),
+              ),
+            ),
+            style: TextStyle(color: theme.colorScheme.onSurface),
+          ),
+          const SizedBox(height: 16),
+
           // Méthode de paiement
           Text(
             'Moyen de paiement',
@@ -278,6 +360,144 @@ class _VoteBottomSheetState extends State<_VoteBottomSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet affichée pendant la confirmation USSD sur le téléphone du
+/// votant. Sonde l'API toutes les 3 s jusqu'à confirmation ou échec.
+class _PaymentPendingSheet extends StatefulWidget {
+  final String transactionRef;
+
+  const _PaymentPendingSheet({required this.transactionRef});
+
+  @override
+  State<_PaymentPendingSheet> createState() => _PaymentPendingSheetState();
+}
+
+class _PaymentPendingSheetState extends State<_PaymentPendingSheet> {
+  static const _pollInterval = Duration(seconds: 3);
+  static const _maxPolls = 60;
+
+  Timer? _timer;
+  int _pollCount = 0;
+  bool _finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(_pollInterval, (_) => _check());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _check() async {
+    if (_finished) return;
+    _pollCount++;
+    if (_pollCount > _maxPolls) {
+      _finish(false);
+      return;
+    }
+
+    Map<String, dynamic>? data;
+    try {
+      data = await CampaignService().paymentStatus(widget.transactionRef);
+    } catch (_) {
+      // Réseau instable : on retente au prochain tick.
+      return;
+    }
+    if (!mounted) return;
+
+    final status = data['status']?.toString().toUpperCase() ?? 'PENDING';
+    if (_finished) return;
+
+    if (status == 'SUCCESSFUL') {
+      _finish(true);
+    } else if (status == 'FAILED' ||
+        status == 'EXPIRED' ||
+        status == 'CANCELLED') {
+      _finish(false);
+    }
+  }
+
+  void _finish(bool success) {
+    if (_finished) return;
+    _finished = true;
+    _timer?.cancel();
+    if (mounted) Navigator.of(context).pop(success);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.phone_in_talk_rounded,
+                size: 32,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Paiement en attente de confirmation',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Validez la demande Mobile Money reçue sur votre téléphone.\n'
+            'Le vote sera enregistré automatiquement…',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 20),
+          const Center(
+            child: SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ),
+        ],
       ),
     );
   }

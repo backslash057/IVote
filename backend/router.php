@@ -7,6 +7,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CategoryController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CandidateController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/VoteController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/utils/AangaraaPay.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AangaraaPayController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/PayoutController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AdminController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/NotificationController.php';
@@ -74,6 +76,10 @@ $urlpatterns = [
     // API: Votes
     new Route("/api/campaigns/{id}/votes", "VoteController@index", "GET"),
     new Route("/api/campaigns/{id}/votes", "VoteController@recordVote", "POST"),
+    new Route("/api/votes/status/{ref}", "VoteController@paymentStatus", "GET"),
+
+    // API: Webhooks (paiements AangaraaPay)
+    new Route("/api/webhooks/aangaraa", "AangaraaPayController@webhook", "POST"),
 
     // API: Payouts
     new Route("/api/campaigns/{id}/payouts", "PayoutController@index", "GET"),

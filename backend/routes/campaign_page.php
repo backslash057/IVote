@@ -1014,7 +1014,8 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
                     body: JSON.stringify({
                         candidate_id: selectedCandidate.id,
                         vote_count: selectedVoteCount,
-                        payment_method: selectedPaymentMethod
+                        payment_method: selectedPaymentMethod,
+                        phone_number: document.getElementById('voter-phone').value.trim()
                     })
                 });
 

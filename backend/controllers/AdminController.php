@@ -306,6 +306,25 @@ class AdminController extends BaseController {
             throw $error;
         }
 
+        // Retrait Mobile Money réel via AangaraaPay (best-effort, hors transaction).
+        if ($action === 'approve' && AangaraaPay::configured()) {
+            $gatewayTxnId = null;
+            try {
+                $withdrawal = AangaraaPay::withdraw([
+                    'phone_number' => (string)$payout['wallet_number'],
+                    'amount' => (int)$payout['amount_fcfa'],
+                    'payment_method' => (string)$payout['payment_method'] === 'orange_money' ? 'ORANGE-MOMO' : 'MTN-MOMO',
+                    'username' => (string)$payout['account_holder'],
+                    'transaction_id' => (string)$payout['payout_id'],
+                ]);
+                $gatewayTxnId = trim((string)($withdrawal['transaction_id'] ?? $withdrawal['txnid'] ?? $withdrawal['reference'] ?? $withdrawal['id'] ?? ''));
+                $this->db->prepare("UPDATE Payout SET payment_reference = ?, processed_at = NOW() WHERE payout_id = ?")
+                    ->execute([$gatewayTxnId !== '' ? $gatewayTxnId : json_encode($withdrawal, JSON_UNESCAPED_UNICODE), $payoutId]);
+            } catch (Throwable $error) {
+                error_log('[IVote] Retrait AangaraaPay échoué (payout ' . $payoutId . ') : ' . $error->getMessage());
+            }
+        }
+
         return ['success' => true, 'message' => $action === 'reject' ? 'Demande refusée.' : 'Demande validée.'];
     }
 
