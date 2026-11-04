@@ -291,9 +291,9 @@ class _RevenuesPageState extends State<RevenuesPage> {
                                   accountHolder: holder,
                                   walletNumber: wallet,
                                 );
-                                if (!mounted) return;
+                                if (!ctx.mounted) return;
                                 Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   SnackBar(
                                     content: Text(res['message'] ??
                                         'Demande de retrait initiée !'),
@@ -303,9 +303,9 @@ class _RevenuesPageState extends State<RevenuesPage> {
                                 );
                                 _load();
                               } catch (e) {
-                                if (!mounted) return;
+                                if (!ctx.mounted) return;
                                 Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   SnackBar(
                                     content: Text(e
                                         .toString()

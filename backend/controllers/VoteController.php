@@ -94,6 +94,14 @@ class VoteController extends BaseController {
         // (SUCCESSFUL). Tant que le client n'a pas validé l'USSD sur son
         // téléphone, on ne garde qu'une ligne de "Payment" en attente.
         // ---------------------------------------------------------------------
+        if (AangaraaPay::enabled() && !AangaraaPay::configured()) {
+            http_response_code(503);
+            return [
+                'success' => false,
+                'message' => 'Le paiement Mobile Money est activé mais sa configuration est incomplète.',
+            ];
+        }
+
         if (AangaraaPay::configured()) {
             $phone = trim((string)($data['phone_number'] ?? ''));
             if ($phone === '') {

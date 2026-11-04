@@ -317,6 +317,26 @@ try {
         </div>
     </section>
 
+    <!-- Mobile App -->
+    <section id="mobile-app" class="py-16 bg-surface-secondary border-t border-bordercustom">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-surface rounded-3xl border border-bordercustom p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div>
+                    <span class="text-xs font-extrabold uppercase tracking-widest text-primary">Application mobile</span>
+                    <h2 class="text-2xl font-extrabold text-fore mt-2">Emportez IVote avec vous</h2>
+                    <p class="text-sm text-fore-secondary mt-2 max-w-xl">
+                        Téléchargez l'application Android officielle pour voter et suivre vos campagnes depuis votre téléphone.
+                    </p>
+                </div>
+                <a href="/public/downloads/ivote.apk"
+                   class="shrink-0 inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold text-sm px-5 py-3 rounded-xl shadow-md transition"
+                   download>
+                    Télécharger l'application
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- Quick Onboarding (3 Steps) -->
     <section id="how-it-works" class="py-20 bg-surface">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

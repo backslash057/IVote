@@ -39,18 +39,21 @@ class _NotificationsPageState extends State<NotificationsPage> {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError)
+          }
+          if (snapshot.hasError) {
             return Center(
                 child:
                     Text('${snapshot.error}'.replaceFirst('Exception: ', '')));
+          }
           final notifications = snapshot.data ?? const [];
-          if (notifications.isEmpty)
+          if (notifications.isEmpty) {
             return Center(
                 child: Text('Aucune notification.',
                     style:
                         TextStyle(color: theme.colorScheme.onSurfaceVariant)));
+          }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: notifications.length,
@@ -74,9 +77,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ? () async {
                         await _service
                             .markRead((item['notification_id'] as num).toInt());
-                        if (mounted)
+                        if (mounted) {
                           setState(
                               () => _future = _service.fetchNotifications());
+                        }
                       }
                     : null,
               );

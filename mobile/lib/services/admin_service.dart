@@ -22,8 +22,9 @@ class AdminService {
     final response =
         await http.get(Uri.parse('$kBaseUrl$path'), headers: await _headers());
     final json = jsonDecode(response.body);
-    if (response.statusCode == 200 && json['success'] == true)
+    if (response.statusCode == 200 && json['success'] == true) {
       return Map<String, dynamic>.from(json['data'] ?? {});
+    }
     throw Exception(json['message'] ?? 'Erreur administrateur.');
   }
 
@@ -31,8 +32,9 @@ class AdminService {
     final response =
         await http.get(Uri.parse('$kBaseUrl$path'), headers: await _headers());
     final json = jsonDecode(response.body);
-    if (response.statusCode == 200 && json['success'] == true)
+    if (response.statusCode == 200 && json['success'] == true) {
       return List<dynamic>.from(json['data'] ?? []);
+    }
     throw Exception(json['message'] ?? 'Erreur administrateur.');
   }
 
@@ -66,7 +68,8 @@ class AdminService {
     final response = await http.post(Uri.parse('$kBaseUrl$path'),
         headers: await _headers(), body: jsonEncode(body));
     final json = jsonDecode(response.body);
-    if (response.statusCode != 200 || json['success'] != true)
+    if (response.statusCode != 200 || json['success'] != true) {
       throw Exception(json['message'] ?? 'Action impossible.');
+    }
   }
 }

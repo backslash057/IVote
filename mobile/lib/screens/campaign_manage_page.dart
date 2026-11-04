@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/campaign.dart';
 import '../services/campaign_service.dart';
 import '../theme/app_theme.dart';
 import 'campaign_detail_page.dart';
@@ -207,9 +206,9 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                       ? null
                                       : dateCtrl.text.trim(),
                                 );
-                                if (!mounted) return;
+                                if (!ctx.mounted) return;
                                 Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   const SnackBar(
                                       content: Text(
                                           'Campagne modifiée avec succès.')),
@@ -217,7 +216,8 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                 _load();
                               } catch (e) {
                                 setModalState(() => isSaving = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                if (!ctx.mounted) return;
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   SnackBar(
                                       content: Text(e
                                           .toString()
@@ -511,9 +511,9 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                       ? newCatCtrl.text.trim()
                                       : null,
                                 );
-                                if (!mounted) return;
+                                if (!ctx.mounted) return;
                                 Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   const SnackBar(
                                     content:
                                         Text('Candidat ajouté avec succès !'),
@@ -523,7 +523,8 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                 _load();
                               } catch (e) {
                                 setModalState(() => isSaving = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                if (!ctx.mounted) return;
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   SnackBar(
                                       content: Text(e
                                           .toString()
@@ -644,9 +645,9 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
       );
       _load();
     } catch (error) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', ''))));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', ''))));
     }
   }
 
@@ -674,16 +675,17 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                     try {
                       await _service.addCategory(widget.campaignId, name);
                       newCategoryController.clear();
-                      if (mounted) {
+                      if (context.mounted && dialogContext.mounted) {
                         Navigator.pop(dialogContext);
                         _load();
                       }
                     } catch (error) {
-                      if (mounted)
+                      if (mounted && dialogContext.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Text(error
                                 .toString()
                                 .replaceFirst('Exception: ', ''))));
+                      }
                     }
                   })
             ]),
@@ -725,7 +727,7 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                                     ]));
                         if (name != null && name.isNotEmpty) {
                           await _service.updateCategory(categoryId, name);
-                          if (mounted) {
+                          if (mounted && dialogContext.mounted) {
                             Navigator.pop(dialogContext);
                             _load();
                           }
@@ -738,7 +740,7 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                         tooltip: 'Supprimer',
                         onPressed: () async {
                           await _service.deleteCategory(categoryId);
-                          if (mounted) {
+                          if (dialogContext.mounted) {
                             Navigator.pop(dialogContext);
                             _load();
                           }
@@ -1072,7 +1074,7 @@ class _CampaignManagePageState extends State<CampaignManagePage> {
                             ),
                             Text(
                               '${_formatNumber(cand['candidate_revenue'] ?? 0)} F',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.greenAccent),

@@ -359,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(height: 4),
                       Text(
                         '${_formatNumber(_stats!['available_balance'] ?? 0)} FCFA',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: AppColors.greenAccent,

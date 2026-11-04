@@ -243,9 +243,10 @@ class _AdminPageState extends State<AdminPage> {
                 final pending = (snapshot.data ?? []).where((item) =>
                     item['status'] == 'pending' ||
                     item['status'] == 'under_review');
-                if (pending.isEmpty)
+                if (pending.isEmpty) {
                   return const ListTile(
                       title: Text('Aucun retrait en attente.'));
+                }
                 return Column(
                   children: pending.map<Widget>((item) {
                     final payout = Map<String, dynamic>.from(item);

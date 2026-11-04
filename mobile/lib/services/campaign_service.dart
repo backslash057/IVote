@@ -75,9 +75,10 @@ class CampaignService {
     final response = await http.delete(Uri.parse('$kBaseUrl/api/campaigns/$id'),
         headers: await _getHeaders());
     final json = jsonDecode(response.body);
-    if (response.statusCode != 200 || json['success'] != true)
+    if (response.statusCode != 200 || json['success'] != true) {
       throw Exception(
           json['message'] ?? 'Impossible de supprimer la campagne.');
+    }
   }
 
   Future<Map<String, dynamic>> addCategory(int campaignId, String name) async {
@@ -275,11 +276,13 @@ class CampaignService {
     request.fields['candidate_number'] = candidateNumber.toString();
     if (age != null) request.fields['age'] = age.toString();
     if (theme != null && theme.isNotEmpty) request.fields['theme'] = theme;
-    if (description != null && description.isNotEmpty)
+    if (description != null && description.isNotEmpty) {
       request.fields['description'] = description;
+    }
     if (bio != null && bio.isNotEmpty) request.fields['bio'] = bio;
-    if (categoryId != null)
+    if (categoryId != null) {
       request.fields['category_id'] = categoryId.toString();
+    }
     if (newCategoryName != null && newCategoryName.isNotEmpty) {
       request.fields['new_category_name'] = newCategoryName;
     }

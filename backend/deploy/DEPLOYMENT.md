@@ -95,6 +95,62 @@ sudo certbot --nginx -d ivote.arited.org
 Une fois HTTPS actif, les cookies sont marqués `secure` automatiquement
 (le backend lit `X-Forwarded-Proto` posé par nginx).
 
+Certbot doit être installé **sur le VPS**, pas sur le PC de développement.
+La commande `certbot --nginx` ne modifie que le virtual host nginx indiqué
+pour `ivote.arited.org`. Sur un VPS partagé, l'administrateur doit vérifier
+que ce nom de domaine pointe bien vers ce serveur et que la configuration
+nginx existante est saine (`sudo nginx -t`) avant l'installation. Certbot
+ajoute ou renouvelle le certificat pour ce domaine sans remplacer les autres
+applications ; il ne faut pas utiliser `--nginx` avec un domaine appartenant à
+une autre application.
+
+**3.3 Activer les paiements AangaraaPay**
+
+Sur le VPS, éditer `/opt/ivote/app/backend/.env` et renseigner :
+
+```env
+AANGARAA_ENABLED=1
+AANGARAA_APP_KEY=la_cle_fournie_par_AangaraaPay
+AANGARAA_API_URL=https://api-production.aangaraa-pay.com/api/v1
+AANGARAA_NOTIFY_URL=https://ivote.arited.org/api/webhooks/aangaraa
+AANGARAA_RETURN_URL=https://ivote.arited.org/payment/return
+```
+
+Puis redémarrer :
+
+```bash
+sudo systemctl restart ivote
+```
+
+Le backend refuse maintenant de repasser silencieusement en mode simulé si
+`AANGARAA_ENABLED=1` mais que la clé manque. Le flux réel est implémenté :
+une ligne `Payment` est créée, le vote n'est enregistré qu'après confirmation
+`SUCCESSFUL`, et le webhook ou le sondage ne doit pas créer deux votes. Il
+reste obligatoire de valider avec les identifiants et le format de réponse
+réels fournis par AangaraaPay avant d'ouvrir les votes au public.
+
+**3.4 Publier l'application Android**
+
+Depuis le PC de développement, compiler l'application avec l'URL HTTPS du VPS :
+
+```bash
+cd mobile
+flutter build apk --release \
+  --dart-define=API_BASE_URL=https://ivote.arited.org
+```
+
+Copier ensuite l'APK produit vers le VPS :
+
+```bash
+sudo install -o ivote -g ivote -m 644 \
+  build/app/outputs/flutter-apk/app-release.apk \
+  /opt/ivote/app/backend/public/downloads/ivote.apk
+```
+
+Le bouton « Télécharger l'application » de la page d'accueil pointe vers
+`/public/downloads/ivote.apk`. Il apparaîtra dès que ce fichier aura été
+copié ; l'APK n'est pas stocké dans Git.
+
 ## Phase 4 — Tests d'acceptance
 
 | # | Test | Attendu |
