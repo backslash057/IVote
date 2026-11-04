@@ -67,6 +67,12 @@ die()   { printf '\033[1;31m[IVote]\033[0m %s\n' "$*" >&2; exit 1; }
 gen_secret() {
     if command -v openssl >/dev/null 2>&1; then openssl rand -hex "$1"; else php -r "echo bin2hex(random_bytes($1));"; fi
 }
+
+gen_db_password() {
+    # Satisfy common MySQL validate_password policies: upper/lowercase,
+    # digits, special character, and sufficient length.
+    printf 'IvA9!%s%s' "$(gen_secret 16)" "$(gen_secret 16)"
+}
 MYSQL_BIN="$(command -v mysql || command -v mariadb || true)"
 
 # -----------------------------------------------------------------------------
@@ -155,7 +161,7 @@ if [ -n "$DB_USER" ] && [ -n "$DB_PASS" ]; then
     info "Identifiants DB fournis (utilisateur $DB_USER) — on les utilise tels quels."
 elif [ "$ROOT" -eq 1 ] && mysql_socket_ok; then
     DB_USER="$DB_APP_USER"
-    DB_PASS="$(gen_secret 16)"
+    DB_PASS="$(gen_db_password)"
     info "Accès root MySQL par socket — provisioning automatique de la base '$DB_NAME'…"
     "$MYSQL_BIN" <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
