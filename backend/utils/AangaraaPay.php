@@ -80,7 +80,7 @@ class AangaraaPay
      */
     private static function request(string $method, string $path, array $payload = []): array
     {
-        if ($payload['app_key'] ?? null === '') {
+        if (($payload['app_key'] ?? null) === '') {
             unset($payload['app_key']);
         }
 
