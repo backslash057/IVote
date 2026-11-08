@@ -110,7 +110,11 @@ class AangaraaPay
         } finally {
             restore_error_handler();
         }
-        if ($body === false) {
+        $statusLine = (string)($http_response_header[0] ?? '');
+        preg_match('/\s(\d{3})(?:\s|$)/', $statusLine, $statusMatch);
+        $httpStatus = isset($statusMatch[1]) ? (int)$statusMatch[1] : 0;
+
+        if ($body === false && $httpStatus === 0) {
             $diagnostic = $lastError !== null ? ' ' . $lastError : '';
             error_log(sprintf(
                 '[IVote] AangaraaPay request failed (%s %s):%s',
@@ -121,11 +125,21 @@ class AangaraaPay
             throw new AangaraaPayException('Impossible de joindre l\'API AangaraaPay.');
         }
 
+        if ($body === false) {
+            error_log(sprintf(
+                '[IVote] AangaraaPay returned HTTP %d without a response body (%s %s).',
+                $httpStatus,
+                $method,
+                $url
+            ));
+            $body = '';
+        }
+
         $data = json_decode($body, true);
         if (!is_array($data)) {
             $data = ['raw' => $body];
         }
-        $data['__http_status'] = (int)(explode(' ', (string)($http_response_header[0] ?? ' 0'))[1] ?? 0);
+        $data['__http_status'] = $httpStatus;
         return $data;
     }
 
