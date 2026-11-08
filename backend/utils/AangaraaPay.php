@@ -100,8 +100,24 @@ class AangaraaPay
             'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
         ];
 
-        $body = @file_get_contents($url, false, stream_context_create($options));
+        $lastError = null;
+        set_error_handler(static function (int $severity, string $message) use (&$lastError): bool {
+            $lastError = $message;
+            return true;
+        });
+        try {
+            $body = file_get_contents($url, false, stream_context_create($options));
+        } finally {
+            restore_error_handler();
+        }
         if ($body === false) {
+            $diagnostic = $lastError !== null ? ' ' . $lastError : '';
+            error_log(sprintf(
+                '[IVote] AangaraaPay request failed (%s %s):%s',
+                $method,
+                $url,
+                $diagnostic
+            ));
             throw new AangaraaPayException('Impossible de joindre l\'API AangaraaPay.');
         }
 
