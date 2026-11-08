@@ -17,8 +17,8 @@ class AangaraaPayException extends RuntimeException
 /**
  * Client minimal pour l'agrégateur AangaraaPay (PIALOA-TECH).
  *
- * Le module cURL n'étant pas installé sur tous les serveurs cibles, on passe
- * par les streams HTTP natifs (file_get_contents + stream_context_create).
+ * Le transport cURL est utilisé pour récupérer séparément les erreurs réseau,
+ * le code HTTP et le corps JSON de la passerelle.
  *
  * Configuration (variables d'environnement / backend/.env) :
  *   AANGARAA_ENABLED  = "1" pour activer les paiements réels (sinon simulation CSV)
@@ -85,56 +85,47 @@ class AangaraaPay
         }
 
         $url = self::apiUrl() . $path;
-        $options = [
-            'http' => [
-                'method' => $method,
-                'header' => implode("\r\n", [
-                    'Content-Type: application/json',
-                    'Accept: application/json',
-                    'User-Agent: IVote/1.0',
-                    'Connection: close',
-                ]) . "\r\n",
-                'content' => $payload !== [] ? json_encode($payload) : null,
-                'ignore_errors' => true,
-                'protocol_version' => 1.1,
-                'timeout' => 30,
-            ],
-            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
-        ];
-
-        $lastError = null;
-        set_error_handler(static function (int $severity, string $message) use (&$lastError): bool {
-            $lastError = $message;
-            return true;
-        });
-        try {
-            $body = file_get_contents($url, false, stream_context_create($options));
-        } finally {
-            restore_error_handler();
+        if (!function_exists('curl_init')) {
+            throw new AangaraaPayException('Le module PHP cURL est requis pour contacter AangaraaPay.');
         }
-        $statusLine = (string)($http_response_header[0] ?? '');
-        preg_match('/\s(\d{3})(?:\s|$)/', $statusLine, $statusMatch);
-        $httpStatus = isset($statusMatch[1]) ? (int)$statusMatch[1] : 0;
 
-        if ($body === false && $httpStatus === 0) {
-            $diagnostic = $lastError !== null ? ' ' . $lastError : '';
+        $handle = curl_init($url);
+        if ($handle === false) {
+            throw new AangaraaPayException('Impossible d\'initialiser le client HTTP AangaraaPay.');
+        }
+
+        $options = [
+            CURLOPT_CUSTOMREQUEST => strtoupper($method),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Accept: application/json',
+                'User-Agent: IVote/1.0',
+                'Connection: close',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ];
+        if ($payload !== []) {
+            $options[CURLOPT_POSTFIELDS] = json_encode($payload, JSON_THROW_ON_ERROR);
+        }
+        curl_setopt_array($handle, $options);
+
+        $body = curl_exec($handle);
+        $httpStatus = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($handle);
+        curl_close($handle);
+
+        if ($body === false) {
             error_log(sprintf(
                 '[IVote] AangaraaPay request failed (%s %s):%s',
                 $method,
                 $url,
-                $diagnostic
+                $curlError !== '' ? ' ' . $curlError : ''
             ));
             throw new AangaraaPayException('Impossible de joindre l\'API AangaraaPay.');
-        }
-
-        if ($body === false) {
-            error_log(sprintf(
-                '[IVote] AangaraaPay returned HTTP %d without a response body (%s %s).',
-                $httpStatus,
-                $method,
-                $url
-            ));
-            $body = '';
         }
 
         $data = json_decode($body, true);
