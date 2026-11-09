@@ -984,7 +984,7 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
             document.getElementById('vote-loading').classList.remove('hidden');
 
             try {
-                const response = await fetch(`/api/campaigns/${campaignId}/votes`, {
+                const response = await fetch(`/api/campaigns/${getCampaignIdFromUrl()}/votes`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
