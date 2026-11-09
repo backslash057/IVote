@@ -132,6 +132,7 @@ class VoteController extends BaseController {
                     'amount' => $amountFcfa,
                     'description' => 'Vote - ' . substr(trim((string)($camp['title'] ?? 'IVote')), 0, 80),
                     'transaction_id' => $transactionRef,
+                    'return_url' => AangaraaPay::returnUrl(),
                     'notify_url' => AangaraaPay::notifyUrl(),
                     'operator' => AangaraaPay::gatewayOperator($paymentMethod),
                 ]);

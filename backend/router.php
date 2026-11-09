@@ -27,6 +27,7 @@ $urlpatterns = [
     new Route("/campaigns", "/routes/campaigns.php", "GET"),
     new Route("/campaigns/new", "/routes/new_campaign.php", "GET"),
     new Route("/campaigns/{id}", "/routes/campaign_page.php", "GET"),
+    new Route("/payment/return", "/routes/payment_return.php", "GET"),
     new Route("/campaigns/{id}/dashboard", "/routes/campaign_dashboard.php", "GET"),
     new Route("/dashboard", "/routes/dashboard.php", "GET"),
     new Route("/admin", "/routes/admin.php", "GET"),

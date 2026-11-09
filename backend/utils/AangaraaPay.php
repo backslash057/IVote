@@ -68,6 +68,15 @@ class AangaraaPay
         return $url;
     }
 
+    public static function returnUrl(): string
+    {
+        $url = trim((string)getenv('AANGARAA_RETURN_URL'));
+        if ($url === '') {
+            return 'https://ivote.arited.org/payment/return';
+        }
+        return $url;
+    }
+
     public static function configured(): bool
     {
         return self::enabled() && self::appKey() !== '';
@@ -166,6 +175,15 @@ class AangaraaPay
     }
 
     /**
+     * Format de numéro attendu par l'API AangaraaPay : 6XXXXXXXX.
+     */
+    public static function gatewayPhone(string $phone): ?string
+    {
+        $normalized = self::normalizePhone($phone);
+        return $normalized === null ? null : substr($normalized, 3);
+    }
+
+    /**
      * Détecte l'opérateur à partir du numéro national 9 chiffres.
      * MTN : préfixes 650-654, 670-683 | Orange : 655-659, 690-699.
      */
@@ -223,11 +241,12 @@ class AangaraaPay
     public static function initiate(array $params): array
     {
         $payload = [
-            'phone_number' => self::normalizePhone((string)($params['phone_number'] ?? '')),
+            'phone_number' => self::gatewayPhone((string)($params['phone_number'] ?? '')),
             'amount' => (string)(int)($params['amount'] ?? 0),
             'description' => trim((string)($params['description'] ?? 'Vote IVote')),
             'app_key' => self::appKey(),
             'transaction_id' => (string)($params['transaction_id'] ?? ''),
+            'return_url' => (string)($params['return_url'] ?? self::returnUrl()),
             'notify_url' => (string)($params['notify_url'] ?? self::notifyUrl()),
             'devise_id' => 'XAF',
         ];
@@ -258,8 +277,8 @@ class AangaraaPay
     {
         $payload = [
             'app_key' => self::appKey(),
-            'phone_number' => self::normalizePhone((string)($params['phone_number'] ?? '')),
-            'amount' => (int)($params['amount'] ?? 0),
+            'phone_number' => self::gatewayPhone((string)($params['phone_number'] ?? '')),
+            'amount' => (string)(int)($params['amount'] ?? 0),
             'payment_method' => (string)($params['payment_method'] ?? ''),
             'username' => (string)($params['username'] ?? 'IVote Organizer'),
         ];
