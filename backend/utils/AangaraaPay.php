@@ -105,6 +105,7 @@ class AangaraaPay
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 30,
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
         ];
