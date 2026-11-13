@@ -3,6 +3,7 @@ import '../models/campaign.dart';
 import '../services/campaign_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/campaign_card.dart';
+import '../widgets/ivote_logo.dart';
 import '../widgets/skeleton_card.dart';
 import 'campaign_detail_page.dart';
 
@@ -126,6 +127,12 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          IvLogo(
+            size: 32,
+            withWordmark: true,
+            wordmarkColor: theme.colorScheme.onSurface,
+          ),
+          const SizedBox(height: 16),
           Text(
             'Toutes les Campagnes de Vote',
             style: TextStyle(

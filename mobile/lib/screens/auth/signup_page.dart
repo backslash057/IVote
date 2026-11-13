@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ivote_logo.dart';
 import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
@@ -139,17 +140,8 @@ class _SignupPageState extends State<SignupPage> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Center(
-                            child: Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 26),
-                            ),
-                          ),
+                          // Logo IVote
+                          const Center(child: IvLogo(size: 64)),
                           const SizedBox(height: 16),
                           Text(
                             'Créer un Compte',
