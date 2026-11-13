@@ -96,6 +96,9 @@ $urlpatterns = [
     new Route("/api/admin/payouts", "AdminController@payouts", "GET"),
     new Route("/api/admin/payouts/{id}/review", "AdminController@reviewPayout", "POST"),
     new Route("/api/admin/notifications", "AdminController@sendNotification", "POST"),
+    new Route("/api/admin/audit", "AdminController@audit", "GET"),
+    new Route("/api/admin/settings", "AdminController@settings", "GET"),
+    new Route("/api/admin/settings", "AdminController@updateSettings", "POST"),
 
     // API: Notifications
     new Route("/api/notifications", "NotificationController@index", "GET"),

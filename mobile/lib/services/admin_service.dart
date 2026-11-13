@@ -17,6 +17,10 @@ class AdminService {
   Future<List<dynamic>> users() async => _list('/api/admin/users');
   Future<List<dynamic>> campaigns() async => _list('/api/admin/campaigns');
   Future<List<dynamic>> payouts() async => _list('/api/admin/payouts');
+  Future<List<dynamic>> settings() async => _list('/api/admin/settings');
+
+  Future<void> updatePlatformFee(double rate) async =>
+      _post('/api/admin/settings', {'platform_fee_rate': rate});
 
   Future<Map<String, dynamic>> _get(String path) async {
     final response =

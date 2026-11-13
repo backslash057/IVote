@@ -82,8 +82,22 @@ command -v php >/dev/null 2>&1 || die "PHP CLI introuvable. Installez php-cli (8
 command -v git >/dev/null 2>&1 || die "git introuvable."
 
 PHP_VERSION="$(php -r 'echo PHP_VERSION;')"
-php -r 'exit(version_compare(PHP_VERSION, "8.0.0", ">=") ? 0 : 1);' \
-    || die "PHP >= 8.0 requis (détecté : $PHP_VERSION)."
+# PHP2Shell (CVE-2026-109618 / CVE-2026-109619) : RCE non authentifiée en cœur
+# de PHP, exploitée dans la nature. Versions minimales corrigées par branche.
+PHP_PATCHED_MIN="$(php -r '
+$branch = implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));
+$min = [
+    "8.2" => "8.2.35",
+    "8.3" => "8.3.36",
+    "8.4" => "8.4.27",
+    "8.5" => "8.5.12",
+][$branch] ?? "";
+echo $min;
+')"
+[ -n "$PHP_PATCHED_MIN" ] \
+    || die "PHP $PHP_VERSION n'est pas supporté en production (branche EOL ou trop ancienne). Installez 8.2.35+, 8.3.36+, 8.4.27+ ou 8.5.12+ (correction PHP2Shell)."
+php -r "exit(version_compare(PHP_VERSION, '$PHP_PATCHED_MIN', '>=') ? 0 : 1);" \
+    || die "PHP $PHP_VERSION est vulnérable à PHP2Shell (CVE-2026-109618/109619). Minimum requis pour la branche : $PHP_PATCHED_MIN. Ex. : sudo apt install --only-upgrade 'php8.4-*' puis sudo systemctl restart ivote."
 php -m | grep -qi '^pdo_mysql$' \
     || warn "L'extension PHP pdo_mysql semble absente : le backend ne pourra pas se connecter à MySQL."
 [ -n "$MYSQL_BIN" ] || warn "Client MySQL/MariaDB introuvable : la base ne pourra pas être initialisée par le script."
