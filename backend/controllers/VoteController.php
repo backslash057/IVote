@@ -145,7 +145,7 @@ class VoteController extends BaseController {
             }
 
             $gatewayStatus = AangaraaPay::resolveStatus($gateway);
-            $payToken = trim((string)($gateway['payToken'] ?? $gateway['paytoken'] ?? $gateway['pay_token'] ?? ''));
+            $payToken = AangaraaPay::payToken($gateway);
             $storedStatus = 'failed';
             if (AangaraaPay::isSuccess($gateway)) {
                 $storedStatus = 'successful';

@@ -268,6 +268,30 @@ class AangaraaPay
     }
 
     /**
+     * Extrait le jeton de paiement des différentes formes de réponse observées.
+     */
+    public static function payToken(array $data): string
+    {
+        $containers = [$data];
+        foreach (['data', 'payment'] as $key) {
+            if (is_array($data[$key] ?? null)) {
+                $containers[] = $data[$key];
+            }
+        }
+
+        foreach ($containers as $container) {
+            foreach (['payToken', 'paytoken', 'pay_token'] as $key) {
+                $value = trim((string)($container[$key] ?? ''));
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Déclenche un retrait / disbursement vers un wallet Mobile Money.
      *
      * @param array $params phone_number, amount, payment_method, username?,
