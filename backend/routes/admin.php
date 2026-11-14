@@ -74,15 +74,19 @@ if (($currentUser['role'] ?? '') !== 'super_admin') {
             </div>
         </section>
 
-        <section class="bg-surface-secondary border border-bordercustom rounded-3xl p-6 space-y-5">
-            <div>
-                <h2 class="font-extrabold">Finances de la plateforme</h2>
-                <p class="text-xs text-fore-secondary mt-1">Les montants sont calculés uniquement sur les paiements confirmés.</p>
+        <section class="bg-surface-secondary border border-bordercustom rounded-3xl p-6 sm:p-8 space-y-6">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-primary">Suivi en direct</p>
+                    <h2 class="mt-1 text-2xl font-extrabold">Finances de la plateforme</h2>
+                    <p class="text-xs text-fore-secondary mt-2">Les montants incluent tous les votes confirmés, anciens et nouveaux.</p>
+                </div>
+                <span id="admin-finance-updated" class="text-xs text-fore-secondary">Actualisation...</span>
             </div>
-            <div id="admin-finance-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+            <div id="admin-finance-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
             <div class="grid lg:grid-cols-2 gap-6">
                 <div>
-                    <h3 class="font-bold text-sm mb-3">Solde des organisateurs</h3>
+                    <h3 class="font-bold text-sm mb-3">Soldes disponibles des organisateurs</h3>
                     <div id="admin-organizer-finance" class="overflow-x-auto text-xs"></div>
                 </div>
                 <div class="space-y-4">

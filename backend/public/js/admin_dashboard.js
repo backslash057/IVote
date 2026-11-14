@@ -25,14 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (financeCards) {
             const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
             financeCards.innerHTML = [
-                ['gross_revenue', 'Total encaissé'],
-                ['organizer_revenue', 'Part organisateurs'],
-                ['platform_revenue', 'Frais totaux IVote'],
-                ['platform_balance', 'Solde IVote disponible'],
-            ].map(([key, label]) => `<div class="admin-stat"><span>${money(data.data?.[key])}</span><small>${label}</small></div>`).join('');
+                ['gross_revenue', 'Total encaissé', 'text-primary'],
+                ['organizer_revenue', 'Revenus organisateurs', 'text-green-600'],
+                ['platform_revenue', 'Revenus IVote', 'text-indigo-600'],
+                ['platform_balance', 'Solde IVote disponible', 'text-orange-600'],
+            ].map(([key, label, color]) => `<div class="rounded-2xl border border-bordercustom bg-surface p-5 shadow-sm"><small class="block text-xs font-semibold text-fore-secondary">${label}</small><span class="mt-2 block text-xl font-extrabold ${color}">${money(data.data?.[key])}</span></div>`).join('');
             const balance = document.getElementById('admin-platform-balance');
             if (balance) balance.textContent = `Solde disponible : ${money(data.data?.platform_balance)}`;
         }
+        const updated = document.getElementById('admin-finance-updated');
+        if (updated) updated.textContent = `Mis à jour à ${new Date().toLocaleTimeString('fr-FR')}`;
     }
 
     async function loadFinance() {
@@ -127,6 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try { await Promise.all([loadOverview(), loadUsers(), loadCampaigns(), loadPayouts(), loadFinance()]); } catch (error) { window.alert(error.message); }
     }
     document.querySelectorAll('[data-refresh]').forEach((button) => button.addEventListener('click', refreshAll));
+    window.setInterval(() => {
+        Promise.all([loadOverview(), loadFinance()]).catch((error) => console.error('Actualisation finances impossible', error));
+    }, 30000);
 
     document.getElementById('admin-settings-form')?.addEventListener('submit', async (event) => {
         event.preventDefault();

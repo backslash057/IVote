@@ -68,7 +68,8 @@ class _AdminPageState extends State<AdminPage>
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _refresh(Future<dynamic> future) async {
@@ -140,18 +141,39 @@ class _AdminPageState extends State<AdminPage>
                 children: [
                   _statCard('Organisateurs', data['organizers'] ?? 0,
                       Icons.people_outline, AppColors.primaryBlueLight),
-                  _statCard('Campagnes en ligne', data['published_campaigns'] ?? 0,
-                      Icons.campaign_outlined, AppColors.greenAccent),
+                  _statCard(
+                      'Campagnes en ligne',
+                      data['published_campaigns'] ?? 0,
+                      Icons.campaign_outlined,
+                      AppColors.greenAccent),
                   _statCard('Comptes suspendus', data['suspended_users'] ?? 0,
                       Icons.block_outlined, AppColors.orangeAccent),
-                  _statCard('Campagnes suspendues',
+                  _statCard(
+                      'Campagnes suspendues',
                       data['suspended_campaigns'] ?? 0,
-                      Icons.pause_circle_outline, AppColors.redAccent),
-                  _statCard('Retraits à traiter', data['pending_payouts'] ?? 0,
+                      Icons.pause_circle_outline,
+                      AppColors.redAccent),
+                  _statCard(
+                      'Retraits à traiter',
+                      data['pending_payouts'] ?? 0,
                       Icons.account_balance_wallet_outlined,
                       AppColors.orangeAccent),
-                  _statCard('Revenus bruts',
-                      _formatFcfa(data['gross_revenue']), Icons.payments_outlined,
+                  _statCard('Revenus bruts', _formatFcfa(data['gross_revenue']),
+                      Icons.payments_outlined, AppColors.greenAccent),
+                  _statCard(
+                      'Revenus organisateurs',
+                      _formatFcfa(data['organizer_revenue']),
+                      Icons.people_alt_outlined,
+                      AppColors.primaryBlueLight),
+                  _statCard(
+                      'Revenus IVote',
+                      _formatFcfa(data['platform_revenue']),
+                      Icons.account_balance_outlined,
+                      AppColors.orangeAccent),
+                  _statCard(
+                      'Solde IVote',
+                      _formatFcfa(data['platform_balance']),
+                      Icons.savings_outlined,
                       AppColors.greenAccent),
                 ],
               ),
@@ -171,13 +193,14 @@ class _AdminPageState extends State<AdminPage>
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: TextField(
             controller: _userSearchController,
-            onChanged: (value) => setState(() => _userQuery = value.toLowerCase()),
+            onChanged: (value) =>
+                setState(() => _userQuery = value.toLowerCase()),
             decoration: InputDecoration(
               hintText: 'Rechercher un organisateur…',
               prefixIcon: const Icon(Icons.search),
               isDense: true,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -211,7 +234,8 @@ class _AdminPageState extends State<AdminPage>
                 if (_userQuery.isNotEmpty) {
                   final name = (user['name'] ?? '').toString().toLowerCase();
                   final email = (user['email'] ?? '').toString().toLowerCase();
-                  if (!name.contains(_userQuery) && !email.contains(_userQuery)) {
+                  if (!name.contains(_userQuery) &&
+                      !email.contains(_userQuery)) {
                     return false;
                   }
                 }
@@ -250,8 +274,8 @@ class _AdminPageState extends State<AdminPage>
               hintText: 'Rechercher une campagne ou un organisateur…',
               prefixIcon: const Icon(Icons.search),
               isDense: true,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -285,9 +309,11 @@ class _AdminPageState extends State<AdminPage>
                   return false;
                 }
                 if (_campaignQuery.isNotEmpty) {
-                  final title = (campaign['title'] ?? '').toString().toLowerCase();
-                  final organizer =
-                      (campaign['organizer_name'] ?? '').toString().toLowerCase();
+                  final title =
+                      (campaign['title'] ?? '').toString().toLowerCase();
+                  final organizer = (campaign['organizer_name'] ?? '')
+                      .toString()
+                      .toLowerCase();
                   if (!title.contains(_campaignQuery) &&
                       !organizer.contains(_campaignQuery)) {
                     return false;
@@ -306,8 +332,7 @@ class _AdminPageState extends State<AdminPage>
                 padding: const EdgeInsets.all(16),
                 itemCount: filtered.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) =>
-                    _campaignTile(filtered[index]),
+                itemBuilder: (context, index) => _campaignTile(filtered[index]),
               );
             },
           ),
@@ -494,8 +519,8 @@ class _AdminPageState extends State<AdminPage>
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
       );
 
-  Widget _filterChip(
-      String value, String label, String current, ValueChanged<String> onSelect) {
+  Widget _filterChip(String value, String label, String current,
+      ValueChanged<String> onSelect) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
@@ -691,12 +716,13 @@ class _AdminPageState extends State<AdminPage>
                     overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 8),
-              _statusBadge(_campaignStatusLabel(status),
-                  _campaignStatusColor(status)),
+              _statusBadge(
+                  _campaignStatusLabel(status), _campaignStatusColor(status)),
             ],
           ),
           const SizedBox(height: 4),
-          Text('${campaign['organizer_name'] ?? ''} · ${campaign['organizer_email'] ?? ''}',
+          Text(
+              '${campaign['organizer_name'] ?? ''} · ${campaign['organizer_email'] ?? ''}',
               style: TextStyle(
                   fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
               maxLines: 1,
@@ -773,15 +799,16 @@ class _AdminPageState extends State<AdminPage>
                     overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 8),
-              _statusBadge(_payoutStatusLabel(status),
-                  _payoutStatusColor(status)),
+              _statusBadge(
+                  _payoutStatusLabel(status), _payoutStatusColor(status)),
             ],
           ),
           const SizedBox(height: 4),
           Text(
               '${_formatFcfa(payout['amount_fcfa'])} · ${_methodLabel(payout['payment_method'])}',
               style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text('${payout['account_holder'] ?? ''} · ${payout['wallet_number'] ?? ''}',
+          Text(
+              '${payout['account_holder'] ?? ''} · ${payout['wallet_number'] ?? ''}',
               style: TextStyle(
                   fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
           if (payout['payment_reference'] != null &&
@@ -799,7 +826,8 @@ class _AdminPageState extends State<AdminPage>
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: busy ? null : () => _reviewPayout(payout, 'reject'),
+                    onPressed:
+                        busy ? null : () => _reviewPayout(payout, 'reject'),
                     icon: const Icon(Icons.close, size: 18),
                     label: const Text('Refuser'),
                   ),
@@ -903,8 +931,7 @@ class _AdminPageState extends State<AdminPage>
     }
     setState(() => _busy.add(key));
     try {
-      await _service.reviewPayout(
-          (payout['payout_id'] as num).toInt(), action,
+      await _service.reviewPayout((payout['payout_id'] as num).toInt(), action,
           reason: reason);
       _snack(action == 'reject' ? 'Demande refusée.' : 'Demande validée.');
       _reload();
