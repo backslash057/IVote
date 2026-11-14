@@ -15,8 +15,16 @@ if (($currentUser['role'] ?? '') !== 'organizer') {
     header('Location: /admin');
     exit;
 }
-$campaignId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $campaignController = new CampaignController();
+if (isset($_GET['code'])) {
+    $campaignId = $campaignController->findCampaignIdByCode((string)$_GET['code']);
+    if ($campaignId === null) {
+        header('Location: /dashboard');
+        exit;
+    }
+} else {
+    $campaignId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+}
 $dashboardResult = $campaignController->dashboard($campaignId);
 
 if (empty($dashboardResult['success']) || empty($dashboardResult['data'])) {
@@ -48,6 +56,7 @@ $candidateCount = count($candidates);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
     <title>IVote - Tableau de Bord : <?= htmlspecialchars($campaign['title'], ENT_QUOTES, 'UTF-8') ?></title>
     
     <!-- Police : Plus Jakarta Sans -->
@@ -122,12 +131,6 @@ $candidateCount = count($candidates);
                         Mes campagnes
                     </a>
 
-                    <a href="/campaigns/<?= (int)$campaign['campaign_id'] ?>" target="_blank" class="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md transition transform hover:-translate-y-0.5">
-                        <span>Voir page publique</span>
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        </svg>
-                    </a>
                 </div>
 
                 <!-- Mobile Menu Button -->
@@ -154,9 +157,6 @@ $candidateCount = count($candidates);
             <a href="/campaigns" class="block py-2 text-sm font-medium text-fore-secondary">Explorer les campagnes</a>
             <a href="/dashboard" class="block py-2 text-sm font-medium text-fore-secondary">Espace organisateur</a>
             <a href="/notifications" class="block py-2 text-sm font-medium text-fore-secondary">Notifications</a>
-            <div class="pt-3 border-t border-bordercustom">
-                <a href="/campaigns/<?= (int)$campaign['campaign_id'] ?>" target="_blank" class="block w-full text-center py-2.5 font-semibold bg-primary text-white rounded-xl text-xs">Voir page publique</a>
-            </div>
         </div>
     </header>
 
@@ -218,30 +218,43 @@ $candidateCount = count($candidates);
                 </div>
 
                 <!-- Actions de statut -->
-                <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="grid grid-cols-2 items-center gap-2.5 w-full lg:w-[24rem]">
                     <?php if ($campaign['computed_status'] === 'draft'): ?>
-                    <button onclick="toggleModal('editCampaignModal', true)" class="px-3.5 py-2 rounded-xl bg-surface border border-bordercustom hover:bg-surface-secondary text-fore text-xs font-bold flex items-center gap-1.5 transition">
+                    <button onclick="toggleModal('editCampaignModal', true)" class="w-full justify-center px-3.5 py-2 rounded-xl bg-surface border border-bordercustom hover:bg-surface-secondary text-fore text-xs font-bold flex items-center gap-1.5 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         Modifier
                     </button>
                     <?php endif; ?>
 
                     <?php if ($campaign['computed_status'] === 'draft'): ?>
-                        <button onclick="updateCampaignAction('publish')" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
+                        <button onclick="updateCampaignAction('publish')" class="w-full px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
                             Publier (Passer en direct)
                         </button>
                     <?php elseif ($campaign['computed_status'] === 'live'): ?>
-                        <button onclick="updateCampaignAction('close')" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm">
+                        <button onclick="updateCampaignAction('close')" class="w-full px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm">
                             Clôturer la campagne
                         </button>
                     <?php elseif ($campaign['computed_status'] === 'closed'): ?>
-                        <button onclick="toggleModal('relaunchModal', true)" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
+                        <button onclick="toggleModal('relaunchModal', true)" class="w-full px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
                             Relancer la campagne
                         </button>
                     <?php endif; ?>
 
-                    <button onclick="toggleModal('payoutModal', true)" class="px-4 py-2 rounded-xl bg-surface border border-primary text-primary hover:bg-primary/10 text-xs font-bold transition">
+                    <button onclick="toggleModal('payoutModal', true)" class="w-full px-4 py-2 rounded-xl bg-surface border border-primary text-primary hover:bg-primary/10 text-xs font-bold transition">
                         Demander un Retrait
+                    </button>
+
+                    <a href="/vote/<?= htmlspecialchars($campaign['campaign_code'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition shadow-sm">
+                        <span>Voir page publique</span>
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        </svg>
+                    </a>
+                    <button type="button" class="copy-campaign-link w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-bordercustom hover:bg-surface-secondary text-xs font-semibold text-fore transition" data-campaign-url="/vote/<?= htmlspecialchars($campaign['campaign_code'], ENT_QUOTES, 'UTF-8') ?>">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        <span>Copier le lien</span>
                     </button>
                 </div>
             </div>

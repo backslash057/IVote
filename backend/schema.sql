@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS Users (
 
 CREATE TABLE IF NOT EXISTS Campaign (
   campaign_id INT PRIMARY KEY AUTO_INCREMENT,
+  campaign_code CHAR(7) NOT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
   image_url VARCHAR(255) DEFAULT NULL,
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS Campaign (
   suspended_by INT NULL,
   suspension_reason VARCHAR(500) NULL,
   status_before_suspension ENUM('draft', 'pending_review', 'published', 'closed', 'archived') NULL,
+  UNIQUE KEY uq_campaign_code (campaign_code),
   FOREIGN KEY (organiser_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 

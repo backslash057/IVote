@@ -1,14 +1,47 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AuthController.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/CampaignController.php';
 $viewer = (new AuthController())->getAuthUser();
 $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
+$campaignCode = (string)($_GET['code'] ?? '');
+$campaignController = new CampaignController();
+$campaignId = $campaignController->findCampaignIdByCode($campaignCode);
+if ($campaignId === null) {
+    http_response_code(404);
+}
+$campaignPreview = $campaignId !== null ? $campaignController->publicMetadata($campaignId) : null;
+$requestHost = (string)($_SERVER['HTTP_HOST'] ?? '');
+if (!preg_match('/\A(?=.{1,253}\z)[A-Za-z0-9.-]+(?::[0-9]{1,5})?\z/D', $requestHost)) {
+    $requestHost = (string)($_SERVER['SERVER_NAME'] ?? '') ?: 'localhost';
+}
+$requestScheme = function_exists('http_request_is_https') && http_request_is_https() ? 'https' : 'http';
+$publicOrigin = $requestScheme . '://' . $requestHost;
+$campaignTitle = $campaignPreview['title'] ?? 'Campagne de vote';
+$campaignDescription = $campaignPreview['description'] ?? 'Découvrez cette campagne de vote sur IVote.';
+$campaignImage = $campaignPreview['image_url'] ?? null;
+if (is_string($campaignImage) && str_starts_with($campaignImage, '/')) {
+    $campaignImage = $publicOrigin . $campaignImage;
+} elseif (
+    !is_string($campaignImage)
+    || !filter_var($campaignImage, FILTER_VALIDATE_URL)
+    || !in_array(strtolower((string)parse_url($campaignImage, PHP_URL_SCHEME)), ['http', 'https'], true)
+) {
+    $campaignImage = $publicOrigin . '/public/favicon.ico';
+}
+$publicCampaignUrl = $publicOrigin . '/vote/' . rawurlencode($campaignCode);
 ?>
 <!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IVote - Vote en Direct</title>
+    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
+    <title><?= htmlspecialchars($campaignTitle, ENT_QUOTES, 'UTF-8') ?> - IVote</title>
+    <meta property="og:title" content="<?= htmlspecialchars($campaignTitle, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($campaignDescription, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($campaignImage, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($publicCampaignUrl, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:type" content="website">
     
     <!-- Police : Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,7 +54,9 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
 
     <link rel="stylesheet" href="/public/css/index.css">
 </head>
-<body class="antialiased selection:bg-blue-500 selection:text-white flex flex-col min-h-screen bg-surface">
+<body class="antialiased selection:bg-blue-500 selection:text-white flex flex-col min-h-screen bg-surface"
+      data-campaign-id="<?= $campaignId ?? 0 ?>"
+      data-campaign-code="<?= htmlspecialchars($campaignCode, ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- Navbar -->
     <header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-bordercustom transition-colors duration-200">
@@ -512,9 +547,7 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
         let currentFilterCategory = 'all';
 
         function getCampaignIdFromUrl() {
-            const parts = window.location.pathname.split('/').filter(Boolean);
-            const id = parts[parts.length - 1];
-            return parseInt(id, 10) || null;
+            return Number(document.body.dataset.campaignId || 0) || null;
         }
 
         function escapeHtml(str) {

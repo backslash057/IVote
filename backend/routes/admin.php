@@ -11,8 +11,11 @@ if (empty($authResult['success']) || empty($authResult['user'])) {
 
 $currentUser = $authResult['user'];
 if (($currentUser['role'] ?? '') !== 'super_admin') {
-    http_response_code(403);
-    echo 'Accès réservé au super-administrateur.';
+    // http_response_code(403);
+    // echo 'Accès réservé au super-administrateur.';
+
+    http_response_code(404);
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/routes/404.html';
     exit;
 }
 ?>
@@ -21,6 +24,7 @@ if (($currentUser['role'] ?? '') !== 'super_admin') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
     <title>IVote - Administration</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

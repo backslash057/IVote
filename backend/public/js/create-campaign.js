@@ -174,13 +174,13 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const result = JSON.parse(xhr.responseText);
 
-                if (xhr.status >= 200 && xhr.status < 300 && result.success && result.campaign_id) {
+                if (xhr.status >= 200 && xhr.status < 300 && result.success && result.campaign_id && result.campaign_code) {
                     uploadStatusText.textContent = 'Téléversement terminé avec succès !';
                     successBox.textContent = result.message || 'Campagne créée avec succès ! Redirection...';
                     successBox.classList.remove('hidden');
 
                     setTimeout(() => {
-                        window.location.href = `/campaigns/${result.campaign_id}/dashboard`;
+                        window.location.href = `/campaigns/${encodeURIComponent(result.campaign_code)}`;
                     }, 1000);
                 } else {
                     throw new Error(result.message || 'Une erreur est survenue lors de la création.');

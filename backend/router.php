@@ -26,7 +26,8 @@ $urlpatterns = [
     new Route("/", "/routes/home.php", "GET"),
     new Route("/campaigns", "/routes/campaigns.php", "GET"),
     new Route("/campaigns/new", "/routes/new_campaign.php", "GET"),
-    new Route("/campaigns/{id}", "/routes/campaign_page.php", "GET"),
+    new Route("/vote/{code}", "/routes/campaign_page.php", "GET"),
+    new Route("/campaigns/{code}", "/routes/campaign_dashboard.php", "GET"),
     new Route("/campaigns/{id}/dashboard", "/routes/campaign_dashboard.php", "GET"),
     new Route("/dashboard", "/routes/dashboard.php", "GET"),
     new Route("/admin", "/routes/admin.php", "GET"),
@@ -124,30 +125,36 @@ foreach ($urlpatterns as $route) {
         $routeFound = true;
         $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 
-        if (str_ends_with($route->target, '.php')) {
-            // Render PHP View
-            $_GET = array_merge($_GET, $params);
-            require_once $_SERVER["DOCUMENT_ROOT"] . $route->target;
-        } else {
-            // API Action Execution
-            header('Content-Type: application/json; charset=utf-8');
-            http_send_cors_headers();
+        try {
+            if (str_ends_with($route->target, '.php')) {
+                // Render PHP View
+                $_GET = array_merge($_GET, $params);
+                require_once $_SERVER["DOCUMENT_ROOT"] . $route->target;
+            } else {
+                // API Action Execution
+                header('Content-Type: application/json; charset=utf-8');
+                http_send_cors_headers();
 
-            try {
                 [$controllerName, $action] = explode('@', $route->target);
                 $controller = new $controllerName();
                 $response = call_user_func_array([$controller, $action], $params);
 
                 echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-            } catch (Throwable $e) {
-                http_response_code(500);
-                error_log('[IVote] Erreur API non gérée sur ' . $method . ' ' . $requestUri . ' : '
-                    . get_class($e) . ': ' . $e->getMessage()
-                    . ' à ' . $e->getFile() . ':' . $e->getLine());
+            }
+        } catch (Throwable $e) {
+            http_response_code(500);
+            error_log('[IVote] Error on ' . $method . ' ' . $requestUri . ' : '
+                . get_class($e) . ': ' . $e->getMessage()
+                . ' at ' . $e->getFile() . ':' . $e->getLine());
+
+            if (str_starts_with($requestUri, '/api/')) {
+                header('Content-Type: application/json; charset=utf-8');
                 echo json_encode([
                     "success" => false,
-                    "message" => "Une erreur interne est survenue.",
+                    "message" => "Error trying to access: " . $requestUri
                 ], JSON_UNESCAPED_UNICODE);
+            } else {
+                echo "Error trying to access: " . htmlspecialchars($requestUri, ENT_QUOTES, 'UTF-8');
             }
         }
         break;

@@ -3,8 +3,12 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/AuthController.php';
 
 $auth = (new AuthController())->me();
 if (empty($auth['success']) || ($auth['user']['role'] ?? '') !== 'super_admin') {
-    http_response_code(403);
-    exit('Accès administrateur requis.');
+    // http_response_code(403);
+    // exit('Accès administrateur requis.');
+
+    http_response_code(404);
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/routes/404.html';
+    exit;
 }
 
 $config = require $_SERVER['DOCUMENT_ROOT'] . '/config.php';

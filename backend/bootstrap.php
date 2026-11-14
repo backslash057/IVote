@@ -110,6 +110,7 @@ if ($missing !== []) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
 <title>IVote — configuration serveur manquante</title>
 <style>
   :root { color-scheme: dark; }

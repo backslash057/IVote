@@ -2,6 +2,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const campaignId = document.body.dataset.campaignId;
     const candidatesCount = parseInt(document.body.dataset.candidatesCount || '0', 10);
 
+    document.querySelectorAll('.copy-campaign-link').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const campaignUrl = `${window.location.origin}${button.dataset.campaignUrl}`;
+            try {
+                await navigator.clipboard.writeText(campaignUrl);
+                const label = button.querySelector('span') || button;
+                const originalText = label.textContent;
+                label.textContent = 'Lien copié !';
+                window.setTimeout(() => {
+                    label.textContent = originalText;
+                }, 2000);
+            } catch {
+                window.prompt('Copiez le lien de la campagne :', campaignUrl);
+            }
+        });
+    });
+
     // --- 1. Gestion des dates minimales (+5 minutes) ---
     const getMinDateTime = () => {
         const minDate = new Date(Date.now() + 5 * 60 * 1000);

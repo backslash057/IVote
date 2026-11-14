@@ -87,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const voterPhone = document.getElementById('voter-phone');
 	
 	const campaignId = Number(document.body.dataset.campaignId || 0);
+	const campaignCode = document.body.dataset.campaignCode || '';
 
 	let selectedCandidateId = null;
 	let selectedCandidateNumberVal = null;
@@ -225,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		showVoteStep('loading');
 
 		try {
-			const response = await fetch(`/campaigns/${campaignId}/votes`, {
+			const response = await fetch(`/api/campaigns/${campaignId}/votes`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -264,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Share candidate link
 	document.querySelectorAll('.copy-link-button').forEach((button) => {
 		button.addEventListener('click', async () => {
-			const shareUrl = `${window.location.origin}/campaigns/${campaignId}?candidate=${encodeURIComponent(button.dataset.candidateId || '')}`;
+			const shareUrl = `${window.location.origin}/vote/${encodeURIComponent(campaignCode)}?candidate=${encodeURIComponent(button.dataset.candidateId || '')}`;
 			try {
 				await navigator.clipboard.writeText(shareUrl);
 				const original = button.textContent;

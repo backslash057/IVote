@@ -24,31 +24,31 @@ INSERT IGNORE INTO Users (email, name, password) VALUES
 -- ---------------------------------------------------------------------------
 -- 2) CAMPAGNES (IDs fixes 1-6)
 -- ---------------------------------------------------------------------------
-INSERT IGNORE INTO Campaign (campaign_id, title, description, image_url, price_per_vote, is_draft, date_cloture, organiser_id)
-SELECT seed.campaign_id, seed.title, seed.description, seed.image_url, seed.price_per_vote, seed.is_draft, seed.date_cloture, users.user_id
+INSERT IGNORE INTO Campaign (campaign_id, campaign_code, title, description, image_url, price_per_vote, is_draft, date_cloture, organiser_id)
+SELECT seed.campaign_id, seed.campaign_code, seed.title, seed.description, seed.image_url, seed.price_per_vote, seed.is_draft, seed.date_cloture, users.user_id
 FROM (
-    SELECT 1 AS campaign_id, 'Élection Miss & Master UY1 2026' AS title,
+    SELECT 1 AS campaign_id, 'BCDFGHJ' AS campaign_code, 'Élection Miss & Master UY1 2026' AS title,
            'Grande Finale Annuelle de l Excellence et du Leadership Académique.' AS description,
            'https://images.unsplash.com/photo-1511578314322-379afb476865?w=1400' AS image_url,
            100 AS price_per_vote, 0 AS is_draft, '2026-11-30 23:59:59' AS date_cloture,
            'orga1@ivote.cm' AS organizer_email
-    UNION ALL SELECT 2, 'Concours Eloquence Inter-Universités 2026',
+    UNION ALL SELECT 2, 'KLMNPQR', 'Concours Eloquence Inter-Universités 2026',
            'La compétition nationale de joute oratoire et de débat public.',
            'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=1400',
            150, 0, '2026-10-15 20:00:00', 'orga1@ivote.cm'
-    UNION ALL SELECT 3, 'AfroTech Pitch Awards 2026',
+    UNION ALL SELECT 3, 'STVWXYZ', 'AfroTech Pitch Awards 2026',
            'Prix du Public pour les Meilleurs Startuppers et Innovateurs Africains.',
            'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1400',
            200, 0, '2026-12-01 18:00:00', 'orga2@ivote.cm'
-    UNION ALL SELECT 4, 'Green Innovation Challenge',
+    UNION ALL SELECT 4, 'BCDFGKL', 'Green Innovation Challenge',
            'Concours récompensant les meilleures startups écologiques et durables.',
            'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=1400',
            100, 0, '2026-11-10 23:59:59', 'orga2@ivote.cm'
-    UNION ALL SELECT 5, 'Indie Sound Africa Awards',
+    UNION ALL SELECT 5, 'MNPQRST', 'Indie Sound Africa Awards',
            'Vote officiel du Meilleur Artiste Révélation Vocale & Musique Urbaine.',
            'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1400',
            100, 0, '2026-10-31 23:59:59', 'orga3@ivote.cm'
-    UNION ALL SELECT 6, 'Gospel Voices Cameroon 2026',
+    UNION ALL SELECT 6, 'VWXYZBC', 'Gospel Voices Cameroon 2026',
            'Élection de la meilleure chorale et voix sacrée de l année.',
            'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1400',
            250, 0, '2026-12-25 22:00:00', 'orga3@ivote.cm'

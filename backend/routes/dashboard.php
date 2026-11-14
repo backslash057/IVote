@@ -16,6 +16,7 @@ if (($session['user']['role'] ?? '') !== 'organizer') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
     <title>IVote - Mes Campagnes (Espace Organisateur)</title>
     
     <!-- Police : Plus Jakarta Sans -->
@@ -479,7 +480,7 @@ if (($session['user']['role'] ?? '') !== 'organizer') {
                     const description = escapeHtml(campaign.description || 'Participez à cette campagne de vote.');
                     const candidateCount = parseInt(campaign.candidate_count || 0, 10);
                     const totalVotes = parseInt(campaign.totalVotes || 0, 10);
-                    const campaignId = parseInt(campaign.campaign_id, 10);
+                    const campaignCode = escapeHtml(campaign.campaign_code || '');
                     const imageUrl = campaign.image_url ? escapeHtml(campaign.image_url) : null;
 
                     // Image or Local Placeholder
@@ -549,14 +550,14 @@ if (($session['user']['role'] ?? '') !== 'organizer') {
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2">
-                                    <a href="/campaigns/${campaignId}/dashboard" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-primary hover:bg-primary-dark text-white shadow">
+                                    <a href="/campaigns/${encodeURIComponent(campaignCode)}" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-primary hover:bg-primary-dark text-white shadow">
                                         <span>Gérer</span>
                                         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M5 12h14"/>
                                             <path d="m12 5 7 7-7 7"/>
                                         </svg>
                                     </a>
-                                    <a href="/campaigns/${campaignId}" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-surface-secondary hover:bg-surface border border-bordercustom text-fore">
+                                    <a href="/vote/${encodeURIComponent(campaignCode)}" target="_blank" class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-surface-secondary hover:bg-surface border border-bordercustom text-fore">
                                         <span>Page Publique</span>
                                         <svg class="w-3.5 h-3.5 text-fore-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M15 3h6v6"/><path d="M10 14 21 3"/>

@@ -19,6 +19,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
     <title>IVote - Votes Monétisés</title>
     
     <!-- Police : Plus Jakarta Sans -->
@@ -256,7 +257,7 @@ try {
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <?php foreach ($popularCampaigns as $campaign): ?>
                         <?php
-                            $campaignId = (int) ($campaign['campaign_id'] ?? 0);
+                            $campaignCode = (string) ($campaign['campaign_code'] ?? '');
                             $imageUrl = !empty($campaign['image_url']) ? $campaign['image_url'] : null;
                             $organizer = $campaign['organizer_name'] ?? 'Organisateur';
                             $title = $campaign['title'] ?? 'Campagne sans titre';
@@ -302,7 +303,7 @@ try {
                                         <?= number_format($totalVotes, 0, ',', ' ') ?> votes
                                     </span>
                                 </div>
-                                <a href="/campaigns/<?= $campaignId ?>" class="block w-full py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold text-center rounded-xl shadow transition">
+                                <a href="/vote/<?= rawurlencode($campaignCode) ?>" class="block w-full py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold text-center rounded-xl shadow transition">
                                     Voter
                                 </a>
                             </div>

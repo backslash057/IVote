@@ -8,6 +8,7 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
     <title>IVote - Toutes les Campagnes</title>
     
     <!-- Police : Plus Jakarta Sans -->
@@ -398,7 +399,7 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
                     const description = escapeHtml(campaign.description || 'Participez à cette campagne de vote.');
                     const candidateCount = parseInt(campaign.candidate_count || 0, 10);
                     const totalVotes = parseInt(campaign.totalVotes || 0, 10);
-                    const campaignId = parseInt(campaign.campaign_id, 10);
+                    const campaignCode = escapeHtml(campaign.campaign_code || '');
                     const imageUrl = campaign.image_url ? escapeHtml(campaign.image_url) : null;
 
                     // Image or Local Placeholder
@@ -453,7 +454,7 @@ $isSuperAdmin = ($viewer['role'] ?? '') === 'super_admin';
                                     </span>
                                 </div>
 
-                                <a href="/campaigns/${campaignId}" class="block w-full py-2.5 ${isActive ? 'bg-primary hover:bg-primary-dark text-white' : 'bg-surface-secondary hover:bg-surface border border-bordercustom text-fore'} text-xs font-bold text-center rounded-xl shadow transition">
+                                <a href="/vote/${encodeURIComponent(campaignCode)}" class="block w-full py-2.5 ${isActive ? 'bg-primary hover:bg-primary-dark text-white' : 'bg-surface-secondary hover:bg-surface border border-bordercustom text-fore'} text-xs font-bold text-center rounded-xl shadow transition">
                                     ${isActive ? 'Accéder au Vote en Direct' : 'Consulter les Résultats'}
                                 </a>
                             </div>

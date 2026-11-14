@@ -3,9 +3,53 @@
 require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/BaseController.php';
 
 class CampaignController extends BaseController {
+    private const CAMPAIGN_CODE_ALPHABET = 'BCDFGHJKLMNPQRSTVWXYZ';
 
     public function status(): array {
         return ['success' => true, 'message' => 'IVote API Online'];
+    }
+
+    public function findCampaignIdByCode(string $code): ?int {
+        if (!preg_match('/^[BCDFGHJKLMNPQRSTVWXYZ]{7}$/D', $code)) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare('SELECT campaign_id FROM Campaign WHERE campaign_code = ?');
+        $stmt->execute([$code]);
+        $campaignId = $stmt->fetchColumn();
+
+        return $campaignId === false ? null : (int)$campaignId;
+    }
+
+    public function publicMetadata(int $campaignId): ?array {
+        $stmt = $this->db->prepare(
+            'SELECT title, description, image_url, status
+             FROM Campaign
+             WHERE campaign_id = ?'
+        );
+        $stmt->execute([$campaignId]);
+        $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$campaign || in_array($campaign['status'], ['suspended', 'archived', 'draft', 'pending_review'], true)) {
+            http_response_code(404);
+            return null;
+        }
+
+        return $campaign;
+    }
+
+    private function generateCampaignCode(): string {
+        do {
+            $code = '';
+            for ($i = 0; $i < 7; $i++) {
+                $code .= self::CAMPAIGN_CODE_ALPHABET[random_int(0, strlen(self::CAMPAIGN_CODE_ALPHABET) - 1)];
+            }
+
+            $stmt = $this->db->prepare('SELECT 1 FROM Campaign WHERE campaign_code = ? LIMIT 1');
+            $stmt->execute([$code]);
+        } while ($stmt->fetchColumn() !== false);
+
+        return $code;
     }
 
     /**
@@ -360,16 +404,31 @@ class CampaignController extends BaseController {
             return $upload;
         }
 
-        $stmt = $this->db->prepare("
-            INSERT INTO Campaign (title, description, image_url, price_per_vote, date_cloture, organiser_id, is_draft) 
-            VALUES (?, ?, ?, ?, ?, ?, 1)
-        ");
-        $stmt->execute([$title, $description, $upload['url'], $pricePerVote, $dateCloture, (int)$user['user_id']]);
+        $campaignId = 0;
+        $campaignCode = '';
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $campaignCode = $this->generateCampaignCode();
+            $stmt = $this->db->prepare("
+                INSERT INTO Campaign (campaign_code, title, description, image_url, price_per_vote, date_cloture, organiser_id, is_draft)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            ");
+
+            try {
+                $stmt->execute([$campaignCode, $title, $description, $upload['url'], $pricePerVote, $dateCloture, (int)$user['user_id']]);
+                $campaignId = (int)$this->db->lastInsertId();
+                break;
+            } catch (PDOException $e) {
+                if ((int)($e->errorInfo[1] ?? 0) !== 1062 || $attempt === 9) {
+                    throw $e;
+                }
+            }
+        }
 
         http_response_code(201);
         return [
             'success' => true,
-            'campaign_id' => (int)$this->db->lastInsertId(),
+            'campaign_id' => $campaignId,
+            'campaign_code' => $campaignCode,
             'message' => 'Campagne créée avec succès.'
         ];
     }

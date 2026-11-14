@@ -186,6 +186,15 @@ Points d'attention :
 
 ---
 
+## 🌐 URLs publiques des campagnes
+
+- `/vote/{campaign_code}` : page publique de campagne et de vote.
+- `/campaigns/{campaign_code}` : tableau de bord de l'organisateur.
+
+Le code est un identifiant stable de 7 consonnes majuscules, distinct de
+`campaign_id`. Les API et relations internes continuent d'utiliser
+`campaign_id`.
+
 ## 🔌 API (`/api/*`)
 
 ```
