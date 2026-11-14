@@ -21,6 +21,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const element = document.querySelector(`[data-stat="${key}"]`);
             if (element) element.textContent = Number(value).toLocaleString('fr-FR');
         });
+        const financeCards = document.getElementById('admin-finance-cards');
+        if (financeCards) {
+            const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+            financeCards.innerHTML = [
+                ['gross_revenue', 'Total encaissé'],
+                ['organizer_revenue', 'Part organisateurs'],
+                ['platform_revenue', 'Frais totaux IVote'],
+                ['platform_balance', 'Solde IVote disponible'],
+            ].map(([key, label]) => `<div class="admin-stat"><span>${money(data.data?.[key])}</span><small>${label}</small></div>`).join('');
+            const balance = document.getElementById('admin-platform-balance');
+            if (balance) balance.textContent = `Solde disponible : ${money(data.data?.platform_balance)}`;
+        }
+    }
+
+    async function loadFinance() {
+        const [organizers, payouts, settings] = await Promise.all([
+            api('/api/admin/finance/organizers'),
+            api('/api/admin/finance/payouts'),
+            api('/api/admin/settings')
+        ]);
+        const table = document.getElementById('admin-organizer-finance');
+        if (table) {
+            table.innerHTML = `<table class="w-full"><thead><tr class="border-b border-bordercustom text-fore-secondary"><th class="p-2 text-left">Organisateur</th><th class="p-2 text-right">Brut</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">Solde</th></tr></thead><tbody>${(organizers.data || []).map((row) => `<tr class="border-b border-bordercustom"><td class="p-2">${escapeHtml(row.name)}</td><td class="p-2 text-right">${Number(row.gross_revenue).toLocaleString('fr-FR')}</td><td class="p-2 text-right">${Number(row.organizer_revenue).toLocaleString('fr-FR')}</td><td class="p-2 text-right font-bold">${Number(row.available_balance).toLocaleString('fr-FR')}</td></tr>`).join('') || '<tr><td class="p-2 text-fore-secondary" colspan="4">Aucun organisateur.</td></tr>'}</tbody></table>`;
+        }
+        const platformPayouts = document.getElementById('admin-platform-payouts');
+        if (platformPayouts) {
+            platformPayouts.innerHTML = `<table class="w-full"><thead><tr class="border-b border-bordercustom text-fore-secondary"><th class="p-2 text-left">Date</th><th class="p-2 text-right">Montant</th><th class="p-2 text-left">Compte</th><th class="p-2 text-left">Statut</th></tr></thead><tbody>${(payouts.data || []).map((row) => `<tr class="border-b border-bordercustom"><td class="p-2">${escapeHtml(row.created_at)}</td><td class="p-2 text-right">${Number(row.amount_fcfa).toLocaleString('fr-FR')} FCFA</td><td class="p-2">${escapeHtml(row.account_holder)} · ${escapeHtml(row.wallet_number)}</td><td class="p-2">${escapeHtml(row.status)}</td></tr>`).join('') || '<tr><td class="p-2 text-fore-secondary" colspan="4">Aucun retrait IVote.</td></tr>'}</tbody></table>`;
+        }
+        const values = Object.fromEntries((settings.data || []).map((row) => [row.setting_key, row.setting_value]));
+        document.getElementById('admin-fee-rate').value = values.platform_fee_rate || '10.00';
+        document.getElementById('admin-payout-holder').value = values.admin_payout_account_holder || '';
+        document.getElementById('admin-payout-method').value = values.admin_payout_payment_method || '';
+        document.getElementById('admin-payout-wallet').value = values.admin_payout_wallet_number || '';
     }
 
     async function loadUsers() {
@@ -91,9 +124,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function refreshAll() {
-        try { await Promise.all([loadOverview(), loadUsers(), loadCampaigns(), loadPayouts()]); } catch (error) { window.alert(error.message); }
+        try { await Promise.all([loadOverview(), loadUsers(), loadCampaigns(), loadPayouts(), loadFinance()]); } catch (error) { window.alert(error.message); }
     }
     document.querySelectorAll('[data-refresh]').forEach((button) => button.addEventListener('click', refreshAll));
+
+    document.getElementById('admin-settings-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+            const result = await api('/api/admin/settings', {method: 'POST', body: JSON.stringify({
+                platform_fee_rate: Number(document.getElementById('admin-fee-rate').value),
+                admin_payout_account_holder: document.getElementById('admin-payout-holder').value.trim(),
+                admin_payout_payment_method: document.getElementById('admin-payout-method').value,
+                admin_payout_wallet_number: document.getElementById('admin-payout-wallet').value.trim()
+            })});
+            window.alert(result.message);
+            await loadFinance();
+        } catch (error) { window.alert(error.message); }
+    });
+
+    document.getElementById('admin-platform-withdraw-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const amount = Number(document.getElementById('admin-platform-amount').value);
+        if (!window.confirm(`Confirmer le retrait immédiat de ${amount.toLocaleString('fr-FR')} FCFA ?`)) return;
+        try {
+            const result = await api('/api/admin/finance/withdraw', {method: 'POST', body: JSON.stringify({amount})});
+            window.alert(result.message);
+            document.getElementById('admin-platform-amount').value = '';
+            await Promise.all([loadOverview(), loadFinance()]);
+        } catch (error) { window.alert(error.message); }
+    });
 
     const broadcastToggle = document.getElementById('announcement-broadcast');
     const recipientSelect = document.getElementById('announcement-recipient');

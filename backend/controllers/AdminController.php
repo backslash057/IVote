@@ -48,7 +48,143 @@ class AdminController extends BaseController {
             $overview[$key] = (int)$this->db->query($sql)->fetchColumn();
         }
 
-        return ['success' => true, 'data' => $overview];
+        $finance = $this->financeSummary();
+        return ['success' => true, 'data' => array_merge($overview, $finance)];
+    }
+
+    private function financeSummary(): array {
+        $row = $this->db->query(
+            "SELECT
+                COALESCE(SUM(amount_fcfa), 0) AS gross_revenue,
+                COALESCE(SUM(platform_fee_amount_fcfa), 0) AS platform_revenue,
+                COALESCE(SUM(organizer_net_amount_fcfa), 0) AS organizer_revenue
+             FROM Vote WHERE payment_status = 'confirmed'"
+        )->fetch(PDO::FETCH_ASSOC) ?: [];
+        $paidOrganizer = (int)$this->db->query(
+            "SELECT COALESCE(SUM(amount_fcfa), 0) FROM Payout WHERE status IN ('approved', 'paid')"
+        )->fetchColumn();
+        $platformWithdrawn = (int)$this->db->query(
+            "SELECT COALESCE(SUM(amount_fcfa), 0) FROM PlatformPayout WHERE status = 'successful'"
+        )->fetchColumn();
+        $platformRevenue = (int)($row['platform_revenue'] ?? 0);
+
+        return [
+            'gross_revenue' => (int)($row['gross_revenue'] ?? 0),
+            'organizer_revenue' => (int)($row['organizer_revenue'] ?? 0),
+            'platform_revenue' => $platformRevenue,
+            'organizer_withdrawn' => $paidOrganizer,
+            'organizer_balance' => max(0, (int)($row['organizer_revenue'] ?? 0) - $paidOrganizer),
+            'platform_withdrawn' => $platformWithdrawn,
+            'platform_balance' => max(0, $platformRevenue - $platformWithdrawn),
+        ];
+    }
+
+    public function organizersFinance(): array {
+        if (!$this->requireSuperAdmin()) {
+            return ['success' => false, 'message' => 'Accès administrateur requis.'];
+        }
+        $stmt = $this->db->query(
+            "SELECT u.user_id, u.name, u.email,
+                    COUNT(DISTINCT c.campaign_id) AS campaign_count,
+                    COALESCE(SUM(CASE WHEN v.payment_status = 'confirmed' THEN v.amount_fcfa ELSE 0 END), 0) AS gross_revenue,
+                    COALESCE(SUM(CASE WHEN v.payment_status = 'confirmed' THEN v.platform_fee_amount_fcfa ELSE 0 END), 0) AS platform_fee,
+                    COALESCE(SUM(CASE WHEN v.payment_status = 'confirmed' THEN v.organizer_net_amount_fcfa ELSE 0 END), 0) AS organizer_revenue,
+                    COALESCE((SELECT SUM(p.amount_fcfa) FROM Payout p JOIN Campaign pc ON pc.campaign_id = p.campaign_id
+                              WHERE pc.organiser_id = u.user_id AND p.status IN ('approved', 'paid')), 0) AS withdrawn
+             FROM Users u
+             LEFT JOIN Campaign c ON c.organiser_id = u.user_id
+             LEFT JOIN Vote v ON v.campaign_id = c.campaign_id
+             WHERE u.role = 'organizer'
+             GROUP BY u.user_id, u.name, u.email
+             ORDER BY organizer_revenue DESC, u.name ASC"
+        );
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            $row['available_balance'] = max(0, (int)$row['organizer_revenue'] - (int)$row['withdrawn']);
+        }
+        unset($row);
+        return ['success' => true, 'data' => $rows];
+    }
+
+    public function platformPayouts(): array {
+        if (!$this->requireSuperAdmin()) {
+            return ['success' => false, 'message' => 'Accès administrateur requis.'];
+        }
+        $stmt = $this->db->query(
+            "SELECT p.*, u.name AS admin_name
+             FROM PlatformPayout p JOIN Users u ON u.user_id = p.requested_by
+             ORDER BY p.created_at DESC LIMIT 50"
+        );
+        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public function withdrawPlatform(): array {
+        $admin = $this->requireSuperAdmin();
+        if (!$admin) {
+            return ['success' => false, 'message' => 'Accès administrateur requis.'];
+        }
+        $data = $this->getRequestData();
+        $amount = (int)($data['amount'] ?? 0);
+        if ($amount <= 0) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Montant de retrait invalide.'];
+        }
+
+        $settings = $this->db->query(
+            "SELECT setting_key, setting_value FROM PlatformSetting
+             WHERE setting_key IN ('admin_payout_payment_method', 'admin_payout_account_holder', 'admin_payout_wallet_number')"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+        $method = (string)($settings['admin_payout_payment_method'] ?? '');
+        $holder = trim((string)($settings['admin_payout_account_holder'] ?? ''));
+        $wallet = trim((string)($settings['admin_payout_wallet_number'] ?? ''));
+        if (!in_array($method, ['mtn_momo', 'orange_money'], true) || $holder === '' || $wallet === '') {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Configurez d’abord le compte Mobile Money de la plateforme.'];
+        }
+
+        $summary = $this->financeSummary();
+        if ($amount > $summary['platform_balance']) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Solde IVote disponible insuffisant.'];
+        }
+
+        $stmt = $this->db->prepare(
+            "INSERT INTO PlatformPayout (amount_fcfa, payment_method, account_holder, wallet_number, requested_by)
+             VALUES (?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([$amount, $method, $holder, $wallet, (int)$admin['user_id']]);
+        $payoutId = (int)$this->db->lastInsertId();
+
+        try {
+            $withdrawal = AangaraaPay::withdraw([
+                'phone_number' => $wallet,
+                'amount' => $amount,
+                'payment_method' => $method === 'orange_money' ? 'Orange_Cameroon' : 'MTN_Cameroon',
+                'username' => $holder,
+            ]);
+            $reference = trim((string)($withdrawal['transaction_id'] ?? $withdrawal['txnid'] ?? $withdrawal['reference'] ?? $withdrawal['id'] ?? ''));
+            $gatewayStatus = AangaraaPay::resolveStatus($withdrawal);
+            $successful = AangaraaPay::isSuccess($withdrawal);
+            $processing = !$successful && $gatewayStatus === AangaraaPay::STATUS_PENDING;
+            $storedStatus = $successful ? 'successful' : ($processing ? 'processing' : 'failed');
+            $this->db->prepare(
+                "UPDATE PlatformPayout
+                 SET status = ?, payment_reference = ?, gateway_raw = ?,
+                     processed_at = CASE WHEN ? = 'processing' THEN NULL ELSE NOW() END
+                 WHERE platform_payout_id = ?"
+            )->execute([$storedStatus, $reference !== '' ? $reference : null, json_encode($withdrawal, JSON_UNESCAPED_UNICODE), $storedStatus, $payoutId]);
+            if (!$successful && !$processing) {
+                http_response_code(502);
+                return ['success' => false, 'message' => 'AangaraaPay n’a pas confirmé le retrait.', 'payout_id' => $payoutId];
+            }
+            return ['success' => true, 'message' => $processing ? 'Retrait IVote initié et en attente de confirmation.' : 'Retrait IVote exécuté avec succès.', 'payout_id' => $payoutId, 'payment_reference' => $reference];
+        } catch (Throwable $error) {
+            $this->db->prepare("UPDATE PlatformPayout SET status = 'failed', gateway_raw = ?, processed_at = NOW() WHERE platform_payout_id = ?")
+                ->execute([$error->getMessage(), $payoutId]);
+            error_log('[IVote] Retrait plateforme échoué (' . $payoutId . ') : ' . $error->getMessage());
+            http_response_code(502);
+            return ['success' => false, 'message' => 'Le retrait IVote n’a pas pu être exécuté.', 'payout_id' => $payoutId];
+        }
     }
 
     public function users(): array {
@@ -430,16 +566,53 @@ class AdminController extends BaseController {
             return ['success' => false, 'message' => 'Le taux de frais doit être compris entre 0 et 100.'];
         }
 
-        $current = $this->db->prepare("SELECT setting_value FROM PlatformSetting WHERE setting_key = 'platform_fee_rate'");
-        $current->execute();
-        $oldValue = $current->fetchColumn();
+        $current = $this->db->query(
+            "SELECT setting_key, setting_value FROM PlatformSetting
+             WHERE setting_key IN ('platform_fee_rate', 'admin_payout_payment_method',
+                                   'admin_payout_account_holder', 'admin_payout_wallet_number')"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+        $oldValue = $current['platform_fee_rate'] ?? null;
 
-        $stmt = $this->db->prepare(
-            "INSERT INTO PlatformSetting (setting_key, setting_value, updated_by)
-             VALUES ('platform_fee_rate', ?, ?)
-             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)"
-        );
-        $stmt->execute([number_format($rate, 2, '.', ''), (int)$admin['user_id']]);
+        $payoutMethod = array_key_exists('admin_payout_payment_method', $data)
+            ? trim((string)$data['admin_payout_payment_method'])
+            : (string)($current['admin_payout_payment_method'] ?? '');
+        $payoutHolder = array_key_exists('admin_payout_account_holder', $data)
+            ? trim((string)$data['admin_payout_account_holder'])
+            : trim((string)($current['admin_payout_account_holder'] ?? ''));
+        $payoutWallet = array_key_exists('admin_payout_wallet_number', $data)
+            ? trim((string)$data['admin_payout_wallet_number'])
+            : trim((string)($current['admin_payout_wallet_number'] ?? ''));
+
+        if ($payoutMethod !== '' && !in_array($payoutMethod, ['mtn_momo', 'orange_money'], true)) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Opérateur du compte plateforme invalide.'];
+        }
+        $hasPayoutData = $payoutMethod !== '' || $payoutHolder !== '' || $payoutWallet !== '';
+        if ($hasPayoutData && ($payoutMethod === '' || $payoutHolder === '' || $payoutWallet === '')) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le compte Mobile Money doit être configuré entièrement.'];
+        }
+
+        $this->db->beginTransaction();
+        try {
+            foreach ([
+                'platform_fee_rate' => number_format($rate, 2, '.', ''),
+                'admin_payout_payment_method' => $payoutMethod,
+                'admin_payout_account_holder' => $payoutHolder,
+                'admin_payout_wallet_number' => $payoutWallet,
+            ] as $key => $value) {
+                $setting = $this->db->prepare(
+                    "INSERT INTO PlatformSetting (setting_key, setting_value, updated_by)
+                     VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)"
+                );
+                $setting->execute([$key, $value, (int)$admin['user_id']]);
+            }
+            $this->db->commit();
+        } catch (Throwable $error) {
+            $this->db->rollBack();
+            throw $error;
+        }
 
         $this->writeAudit(
             (int)$admin['user_id'],
@@ -529,9 +702,8 @@ class AdminController extends BaseController {
                 $withdrawal = AangaraaPay::withdraw([
                     'phone_number' => (string)$payout['wallet_number'],
                     'amount' => (int)$payout['amount_fcfa'],
-                    'payment_method' => (string)$payout['payment_method'] === 'orange_money' ? 'ORANGE-MOMO' : 'MTN-MOMO',
+                    'payment_method' => (string)$payout['payment_method'] === 'orange_money' ? 'Orange_Cameroon' : 'MTN_Cameroon',
                     'username' => (string)$payout['account_holder'],
-                    'transaction_id' => (string)$payout['payout_id'],
                 ]);
                 $gatewayTxnId = trim((string)($withdrawal['transaction_id'] ?? $withdrawal['txnid'] ?? $withdrawal['reference'] ?? $withdrawal['id'] ?? ''));
 

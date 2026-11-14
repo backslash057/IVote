@@ -74,6 +74,46 @@ if (($currentUser['role'] ?? '') !== 'super_admin') {
             </div>
         </section>
 
+        <section class="bg-surface-secondary border border-bordercustom rounded-3xl p-6 space-y-5">
+            <div>
+                <h2 class="font-extrabold">Finances de la plateforme</h2>
+                <p class="text-xs text-fore-secondary mt-1">Les montants sont calculés uniquement sur les paiements confirmés.</p>
+            </div>
+            <div id="admin-finance-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-sm mb-3">Solde des organisateurs</h3>
+                    <div id="admin-organizer-finance" class="overflow-x-auto text-xs"></div>
+                </div>
+                <div class="space-y-4">
+                    <form id="admin-settings-form" class="space-y-3">
+                        <h3 class="font-bold text-sm">Paramètres financiers</h3>
+                        <label class="block text-xs font-semibold">Frais totaux annoncés aux organisateurs (%)
+                            <input id="admin-fee-rate" type="number" min="0" max="100" step="0.01" required class="mt-1 w-full rounded-xl border border-bordercustom bg-surface px-3 py-2 text-sm">
+                        </label>
+                        <input id="admin-payout-holder" required maxlength="100" placeholder="Titulaire du compte IVote" class="w-full rounded-xl border border-bordercustom bg-surface px-3 py-2 text-sm">
+                        <select id="admin-payout-method" required class="w-full rounded-xl border border-bordercustom bg-surface px-3 py-2 text-sm">
+                            <option value="">Opérateur du compte IVote</option>
+                            <option value="mtn_momo">MTN MoMo</option>
+                            <option value="orange_money">Orange Money</option>
+                        </select>
+                        <input id="admin-payout-wallet" required maxlength="50" placeholder="Numéro Mobile Money IVote" class="w-full rounded-xl border border-bordercustom bg-surface px-3 py-2 text-sm">
+                        <button class="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white" type="submit">Enregistrer</button>
+                    </form>
+                    <form id="admin-platform-withdraw-form" class="space-y-3 border-t border-bordercustom pt-4">
+                        <h3 class="font-bold text-sm">Retirer les revenus IVote</h3>
+                        <p id="admin-platform-balance" class="text-xs text-fore-secondary"></p>
+                        <input id="admin-platform-amount" type="number" min="1" required placeholder="Montant en FCFA" class="w-full rounded-xl border border-bordercustom bg-surface px-3 py-2 text-sm">
+                        <button class="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white" type="submit">Retirer maintenant</button>
+                    </form>
+                </div>
+            </div>
+            <div>
+                <h3 class="font-bold text-sm mb-3">Retraits IVote</h3>
+                <div id="admin-platform-payouts" class="overflow-x-auto text-xs"></div>
+            </div>
+        </section>
+
         <section class="bg-surface-secondary border border-bordercustom rounded-3xl overflow-hidden">
             <div class="p-5 border-b border-bordercustom flex items-center justify-between"><div><h2 class="font-extrabold">Retraits</h2><p class="text-xs text-fore-secondary mt-1">Valider ou refuser une demande en attente.</p></div><div class="flex gap-4"><a class="admin-refresh text-primary" href="/admin/payouts.csv">Exporter CSV</a><button class="admin-refresh text-primary" data-refresh="payouts">Actualiser</button></div></div>
             <div id="admin-payouts" class="overflow-x-auto"><p class="p-5 text-sm text-fore-secondary">Chargement...</p></div>

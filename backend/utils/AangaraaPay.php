@@ -294,8 +294,7 @@ class AangaraaPay
     /**
      * Déclenche un retrait / disbursement vers un wallet Mobile Money.
      *
-     * @param array $params phone_number, amount, payment_method, username?,
-     *                       transaction_id?
+     * @param array $params phone_number, amount, payment_method, username?
      */
     public static function withdraw(array $params): array
     {
@@ -306,9 +305,6 @@ class AangaraaPay
             'payment_method' => (string)($params['payment_method'] ?? ''),
             'username' => (string)($params['username'] ?? 'IVote Organizer'),
         ];
-        if (!empty($params['transaction_id'])) {
-            $payload['transaction_id'] = $params['transaction_id'];
-        }
         return self::request('POST', '/aangaraa-pay/withdrawal', $payload);
     }
 
