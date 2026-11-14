@@ -24,6 +24,55 @@ CREATE TABLE IF NOT EXISTS Payment (
   FOREIGN KEY (candidate_id) REFERENCES Candidate(candidate_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX idx_payment_transaction_ref ON Payment (transaction_ref);
-CREATE INDEX idx_payment_campaign ON Payment (campaign_id, candidate_id);
-CREATE INDEX idx_payment_status ON Payment (status, created_at);
+-- MySQL does not support `CREATE INDEX IF NOT EXISTS` consistently across
+-- supported server versions. Add the indexes only when they are absent so
+-- this migration remains safe after schema.sql or a partial previous run.
+SET @database_name = DATABASE();
+
+SET @has_index = (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = @database_name
+    AND table_name = 'Payment'
+    AND index_name = 'idx_payment_transaction_ref'
+);
+SET @sql = IF(
+  @has_index = 0,
+  'CREATE INDEX idx_payment_transaction_ref ON Payment (transaction_ref)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @has_index = (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = @database_name
+    AND table_name = 'Payment'
+    AND index_name = 'idx_payment_campaign'
+);
+SET @sql = IF(
+  @has_index = 0,
+  'CREATE INDEX idx_payment_campaign ON Payment (campaign_id, candidate_id)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @has_index = (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = @database_name
+    AND table_name = 'Payment'
+    AND index_name = 'idx_payment_status'
+);
+SET @sql = IF(
+  @has_index = 0,
+  'CREATE INDEX idx_payment_status ON Payment (status, created_at)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

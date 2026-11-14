@@ -22,7 +22,14 @@ class AangaraaPayController extends BaseController
         }
 
         $transactionRef = trim((string)($payload['transaction_id'] ?? $payload['transaction_ref'] ?? ''));
-        $payToken = trim((string)($payload['paytoken'] ?? $payload['pay_token'] ?? $payload['payToken'] ?? ''));
+        $payToken = AangaraaPay::payToken($payload);
+        if ($transactionRef === '' && is_array($payload['data'] ?? null)) {
+            $transactionRef = trim((string)(
+                $payload['data']['transaction_id']
+                ?? $payload['data']['transaction_ref']
+                ?? ''
+            ));
+        }
 
         $stmtPay = $this->db->prepare("SELECT * FROM Payment WHERE (transaction_ref = ? OR (? <> '' AND pay_token = ?)) LIMIT 1");
         $stmtPay->execute([$transactionRef, $payToken, $payToken]);

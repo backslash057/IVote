@@ -53,6 +53,27 @@ info() { printf '\033[1;32m[IVote]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[IVote]\033[0m %s\n' "$*" >&2; }
 
 # -----------------------------------------------------------------------------
+# 0. Vérification de la version de PHP (PHP2Shell — CVE-2026-109618/109619)
+# -----------------------------------------------------------------------------
+if command -v php >/dev/null 2>&1; then
+    PHP_VERSION="$(php -r 'echo PHP_VERSION;')"
+    PHP_PATCHED_MIN="$(php -r '
+$branch = implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));
+$min = ["8.2" => "8.2.35", "8.3" => "8.3.36", "8.4" => "8.4.27", "8.5" => "8.5.12"][$branch] ?? "";
+echo $min;
+')"
+    if [ -z "$PHP_PATCHED_MIN" ] || ! php -r "exit(version_compare(PHP_VERSION, '$PHP_PATCHED_MIN', '>=') ? 0 : 1);"; then
+        warn "PHP $PHP_VERSION est vulnérable à PHP2Shell (CVE-2026-109618/109619)."
+        warn "Minimum requis pour la branche : ${PHP_PATCHED_MIN:-8.2.35 / 8.3.36 / 8.4.27 / 8.5.12}."
+        warn "Ex. : sudo apt install --only-upgrade 'php8.4-*' && sudo systemctl restart ivote"
+        exit 3
+    fi
+    info "PHP $PHP_VERSION (version corrigée PHP2Shell)."
+else
+    warn "Binaire 'php' introuvable dans le PATH — vérification de version ignorée."
+fi
+
+# -----------------------------------------------------------------------------
 # 1. Code : fetch + reset sur la branche distante
 # -----------------------------------------------------------------------------
 info "Mise à jour du code ($IVOTE_BRANCH)…"

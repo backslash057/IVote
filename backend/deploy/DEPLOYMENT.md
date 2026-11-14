@@ -32,7 +32,7 @@ Clients → https://ivote.arited.org → nginx (admin)
 | À vérifier | Attendue |
 |---|---|
 | OS | Ubuntu 22.04/24.04 |
-| `php -v` | ≥ 8.0 (8.4 recommandé), extension `pdo_mysql` |
+| `php -v` | **≥ 8.2.35 / 8.3.36 / 8.4.27 / 8.5.12** selon la branche (voir « PHP2Shell »), extension `pdo_mysql` |
 | `git` | présent |
 | `mysql`/`mariadb` | présent + identifiants exploitables |
 | Port | retenu automatiquement par setup.sh (défaut `41824`, plage haute) |
@@ -51,7 +51,7 @@ sudo ./setup.sh
 ```
 
 `setup.sh` (en root) :
-- vérifie les pré-requis (PHP ≥ 8.0, git, pdo_mysql) ;
+- vérifie les pré-requis (PHP **corrigé PHP2Shell**, git, pdo_mysql) ;
 - choisit un port libre en boucle locale (défaut `41824`, jamais exposé) ;
 - crée l'utilisateur système dédié `ivote` et clone le code dans
   `/opt/ivote/app` (propriété `ivote`) ;
@@ -196,6 +196,47 @@ mysqldump -h 127.0.0.1 -u ivote_app -p ivote > ivote-$(date +%F).sql
 systemctl status ivote            # état du service
 journalctl -u ivote -n 200        # journaux applicatifs
 tail -f /var/log/nginx/access.log # accès web
+```
+
+---
+
+## Sécurité — PHP2Shell (CVE-2026-109618 / CVE-2026-109619)
+
+RCE **non authentifiée** dans le cœur de PHP, CVSS 9.2, ajoutée au catalogue
+**CISA KEV** et exploitée dans la nature. Versions minimales corrigées par
+branche :
+
+| Branche | Version corrigée |
+|---|---|
+| 8.2 | **8.2.35** |
+| 8.3 | **8.3.36** |
+| 8.4 | **8.4.27** |
+| 8.5 | **8.5.12** |
+
+Toutes les versions antérieures (branches ≤ 8.1 incluses) sont vulnérables.
+`setup.sh` **et** `deploy.sh` refusent désormais de continuer si le binaire
+`php` détecté est en dessous de la version corrigée de sa branche.
+
+**Mise à jour (VPS Ubuntu + PPA `ondrej/php`)** — mise à jour de correctifs,
+même branche mineure, sans risque d'API :
+
+```bash
+sudo apt update
+sudo apt install --only-upgrade 'php8.4-*'   # adapter la branche si besoin (8.3, 8.2…)
+sudo systemctl restart ivote
+php -v                                        # doit afficher >= 8.4.27
+```
+
+> Sur un VPS partagé, ne mettez à jour **que** la branche réellement utilisée
+> par IVote (`php -v` du service) : les autres applications gardent leur propre
+> branche PHP et ne sont pas affectées. Vérifier `sudo nginx -t` et l'état des
+> autres services (`systemctl status php8.2-fpm php8.3-fpm …`) après l'opération.
+
+**Vérifier une installation existante** :
+
+```bash
+php -r 'echo PHP_VERSION, PHP_EOL;'
+php -r 'exit(version_compare(PHP_VERSION, "8.4.27", ">=") ? 0 : 1);' && echo "OK" || echo "VULNÉRABLE"
 ```
 
 ---

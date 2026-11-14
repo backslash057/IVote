@@ -17,8 +17,8 @@ class AangaraaPayException extends RuntimeException
 /**
  * Client minimal pour l'agrégateur AangaraaPay (PIALOA-TECH).
  *
- * Le module cURL n'étant pas installé sur tous les serveurs cibles, on passe
- * par les streams HTTP natifs (file_get_contents + stream_context_create).
+ * Le transport cURL est utilisé pour récupérer séparément les erreurs réseau,
+ * le code HTTP et le corps JSON de la passerelle.
  *
  * Configuration (variables d'environnement / backend/.env) :
  *   AANGARAA_ENABLED  = "1" pour activer les paiements réels (sinon simulation CSV)
@@ -68,6 +68,15 @@ class AangaraaPay
         return $url;
     }
 
+    public static function returnUrl(): string
+    {
+        $url = trim((string)getenv('AANGARAA_RETURN_URL'));
+        if ($url === '') {
+            return 'https://ivote.arited.org/payment/return';
+        }
+        return $url;
+    }
+
     public static function configured(): bool
     {
         return self::enabled() && self::appKey() !== '';
@@ -80,28 +89,55 @@ class AangaraaPay
      */
     private static function request(string $method, string $path, array $payload = []): array
     {
-        if ($payload['app_key'] ?? null === '') {
+        if (($payload['app_key'] ?? null) === '') {
             unset($payload['app_key']);
         }
 
         $url = self::apiUrl() . $path;
-        $options = [
-            'http' => [
-                'method' => $method,
-                'header' => implode("\r\n", [
-                    'Content-Type: application/json',
-                    'Accept: application/json',
-                    'User-Agent: IVote/1.0',
-                ]) . "\r\n",
-                'content' => $payload !== [] ? json_encode($payload) : null,
-                'ignore_errors' => true,
-                'timeout' => 30,
-            ],
-            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
-        ];
+        if (!function_exists('curl_init')) {
+            throw new AangaraaPayException('Le module PHP cURL est requis pour contacter AangaraaPay.');
+        }
 
-        $body = @file_get_contents($url, false, stream_context_create($options));
+        $handle = curl_init($url);
+        if ($handle === false) {
+            throw new AangaraaPayException('Impossible d\'initialiser le client HTTP AangaraaPay.');
+        }
+
+        $options = [
+            CURLOPT_CUSTOMREQUEST => strtoupper($method),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Accept: application/json',
+                'User-Agent: IVote/1.0',
+                'Connection: close',
+                'Expect:',
+            ],
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_POST => strtoupper($method) === 'POST',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ];
+        if ($payload !== []) {
+            $options[CURLOPT_POSTFIELDS] = json_encode($payload, JSON_THROW_ON_ERROR);
+        }
+        curl_setopt_array($handle, $options);
+
+        $body = curl_exec($handle);
+        $httpStatus = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($handle);
+        curl_close($handle);
+
         if ($body === false) {
+            error_log(sprintf(
+                '[IVote] AangaraaPay request failed (%s %s):%s',
+                $method,
+                $url,
+                $curlError !== '' ? ' ' . $curlError : ''
+            ));
             throw new AangaraaPayException('Impossible de joindre l\'API AangaraaPay.');
         }
 
@@ -109,7 +145,7 @@ class AangaraaPay
         if (!is_array($data)) {
             $data = ['raw' => $body];
         }
-        $data['__http_status'] = (int)(explode(' ', (string)($http_response_header[0] ?? ' 0'))[1] ?? 0);
+        $data['__http_status'] = $httpStatus;
         return $data;
     }
 
@@ -136,6 +172,15 @@ class AangaraaPay
             return null;
         }
         return '237' . $digits;
+    }
+
+    /**
+     * Format de numéro attendu par l'API AangaraaPay : 6XXXXXXXX.
+     */
+    public static function gatewayPhone(string $phone): ?string
+    {
+        $normalized = self::normalizePhone($phone);
+        return $normalized === null ? null : substr($normalized, 3);
     }
 
     /**
@@ -196,11 +241,12 @@ class AangaraaPay
     public static function initiate(array $params): array
     {
         $payload = [
-            'phone_number' => self::normalizePhone((string)($params['phone_number'] ?? '')),
+            'phone_number' => self::gatewayPhone((string)($params['phone_number'] ?? '')),
             'amount' => (string)(int)($params['amount'] ?? 0),
             'description' => trim((string)($params['description'] ?? 'Vote IVote')),
             'app_key' => self::appKey(),
             'transaction_id' => (string)($params['transaction_id'] ?? ''),
+            'return_url' => (string)($params['return_url'] ?? self::returnUrl()),
             'notify_url' => (string)($params['notify_url'] ?? self::notifyUrl()),
             'devise_id' => 'XAF',
         ];
@@ -222,6 +268,30 @@ class AangaraaPay
     }
 
     /**
+     * Extrait le jeton de paiement des différentes formes de réponse observées.
+     */
+    public static function payToken(array $data): string
+    {
+        $containers = [$data];
+        foreach (['data', 'payment'] as $key) {
+            if (is_array($data[$key] ?? null)) {
+                $containers[] = $data[$key];
+            }
+        }
+
+        foreach ($containers as $container) {
+            foreach (['payToken', 'paytoken', 'pay_token'] as $key) {
+                $value = trim((string)($container[$key] ?? ''));
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Déclenche un retrait / disbursement vers un wallet Mobile Money.
      *
      * @param array $params phone_number, amount, payment_method, username?,
@@ -231,8 +301,8 @@ class AangaraaPay
     {
         $payload = [
             'app_key' => self::appKey(),
-            'phone_number' => self::normalizePhone((string)($params['phone_number'] ?? '')),
-            'amount' => (int)($params['amount'] ?? 0),
+            'phone_number' => self::gatewayPhone((string)($params['phone_number'] ?? '')),
+            'amount' => (string)(int)($params['amount'] ?? 0),
             'payment_method' => (string)($params['payment_method'] ?? ''),
             'username' => (string)($params['username'] ?? 'IVote Organizer'),
         ];

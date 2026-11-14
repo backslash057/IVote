@@ -1011,34 +1011,13 @@ $publicCampaignUrl = $publicOrigin . '/vote/' . rawurlencode($campaignCode);
                 return;
             }
 
-            // Écran de chargement USSD
+            // L'initiation réelle doit partir dès la soumission du formulaire.
             document.getElementById('vote-fields').classList.add('hidden');
             document.getElementById('vote-order-summary').classList.add('hidden');
             document.getElementById('vote-loading').classList.remove('hidden');
 
-            setTimeout(() => {
-                document.getElementById('vote-loading').classList.add('hidden');
-                document.getElementById('vote-ussd').classList.remove('hidden');
-                const price = calculatePrice(selectedVoteCount, campaignData.price_per_vote || 100);
-                document.getElementById('ussd-price').textContent = `${new Intl.NumberFormat('fr-FR').format(price)} FCFA`;
-            }, 1200);
-        });
-
-        document.getElementById('edit-vote')?.addEventListener('click', () => {
-            document.getElementById('vote-ussd').classList.add('hidden');
-            document.getElementById('vote-fields').classList.remove('hidden');
-            document.getElementById('vote-order-summary').classList.remove('hidden');
-        });
-
-        // Confirmation du vote via l'API
-        document.getElementById('confirm-ussd')?.addEventListener('click', async () => {
-            const campaignId = getCampaignIdFromUrl();
-            const btn = document.getElementById('confirm-ussd');
-            btn.disabled = true;
-            btn.textContent = "Enregistrement en cours...";
-
             try {
-                const response = await fetch(`/api/campaigns/${campaignId}/votes`, {
+                const response = await fetch(`/api/campaigns/${getCampaignIdFromUrl()}/votes`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1048,32 +1027,69 @@ $publicCampaignUrl = $publicOrigin . '/vote/' . rawurlencode($campaignCode);
                         candidate_id: selectedCandidate.id,
                         vote_count: selectedVoteCount,
                         payment_method: selectedPaymentMethod,
-                        phone_number: document.getElementById('voter-phone').value.trim()
+                        phone_number: phone
                     })
                 });
-
                 const result = await response.json();
 
                 if (!response.ok || !result.success) {
-                    throw new Error(result.message || "Échec de validation du vote.");
+                    throw new Error(result.message || "Échec de l'initiation du paiement.");
                 }
 
-                // Succès
-                document.getElementById('vote-ussd').classList.add('hidden');
-                document.getElementById('vote-success').classList.remove('hidden');
-
-                document.getElementById('vote-reference').textContent = result.transaction_ref || 'TX-' + Math.random().toString(36).substring(2, 9).toUpperCase();
-                document.getElementById('vote-success-votes').textContent = `+${result.votes_added || selectedVoteCount} voix`;
-                document.getElementById('vote-success-price').textContent = `${new Intl.NumberFormat('fr-FR').format(result.amount_fcfa || 0)} FCFA`;
-
+                document.getElementById('vote-loading').classList.add('hidden');
+                document.getElementById('vote-ussd').classList.remove('hidden');
+                document.getElementById('ussd-price').textContent =
+                    `${new Intl.NumberFormat('fr-FR').format(result.amount_fcfa || 0)} FCFA`;
+                document.getElementById('vote-reference').textContent = result.transaction_ref || '';
+                document.getElementById('vote-success-price').textContent =
+                    `${new Intl.NumberFormat('fr-FR').format(result.amount_fcfa || 0)} FCFA`;
+                document.getElementById('vote-success-votes').textContent =
+                    `+${result.votes_added || selectedVoteCount} voix`;
             } catch (err) {
-                alert(err.message);
-                document.getElementById('vote-ussd').classList.add('hidden');
+                document.getElementById('vote-loading').classList.add('hidden');
                 document.getElementById('vote-fields').classList.remove('hidden');
                 document.getElementById('vote-order-summary').classList.remove('hidden');
+                errorEl.textContent = err instanceof Error ? err.message : "Échec de l'initiation du paiement.";
+                errorEl.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('edit-vote')?.addEventListener('click', () => {
+            document.getElementById('vote-ussd').classList.add('hidden');
+            document.getElementById('vote-fields').classList.remove('hidden');
+            document.getElementById('vote-order-summary').classList.remove('hidden');
+        });
+
+        // Vérification du paiement après confirmation sur le téléphone.
+        document.getElementById('confirm-ussd')?.addEventListener('click', async () => {
+            const btn = document.getElementById('confirm-ussd');
+            const errorEl = document.getElementById('vote-error');
+            const reference = document.getElementById('vote-reference').textContent.trim();
+            if (!reference) {
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = "Vérification en cours...";
+            try {
+                const response = await fetch(`/api/votes/status/${encodeURIComponent(reference)}`, {
+                    headers: {'Accept': 'application/json'}
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || "Impossible de vérifier le paiement.");
+                }
+                if (String(result.status || '').toUpperCase() === 'SUCCESSFUL') {
+                    document.getElementById('vote-ussd').classList.add('hidden');
+                    document.getElementById('vote-success').classList.remove('hidden');
+                } else {
+                    throw new Error("Paiement encore en attente. Validez l'invite sur votre téléphone puis réessayez.");
+                }
+            } catch (err) {
+                errorEl.textContent = err instanceof Error ? err.message : "Impossible de vérifier le paiement.";
+                errorEl.classList.remove('hidden');
             } finally {
                 btn.disabled = false;
-                btn.textContent = "Confirmer la validation du PIN";
+                btn.textContent = "Vérifier le paiement";
             }
         });
 

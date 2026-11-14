@@ -4,6 +4,30 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/controllers/BaseController.php';
 
 class AdminController extends BaseController {
 
+    /**
+     * Lit les paramètres de pagination depuis la query string. Retourne null
+     * quand aucune pagination n'est demandée : les appels historiques (sans
+     * `page`/`per_page`) reçoivent toujours la liste complète, sans régression.
+     */
+    private function pagination(int $defaultPerPage = 50, int $maxPerPage = 200): ?array {
+        if (!isset($_GET['page']) && !isset($_GET['per_page'])) {
+            return null;
+        }
+        $perPage = (int)($_GET['per_page'] ?? $defaultPerPage);
+        $perPage = max(1, min($maxPerPage, $perPage));
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        return ['page' => $page, 'per_page' => $perPage, 'limit' => $perPage, 'offset' => ($page - 1) * $perPage];
+    }
+
+    private function paginationMeta(array $page, int $total): array {
+        return [
+            'page' => $page['page'],
+            'per_page' => $page['per_page'],
+            'total' => $total,
+            'total_pages' => (int)ceil($total / max(1, $page['per_page'])),
+        ];
+    }
+
     public function overview(): array {
         $admin = $this->requireSuperAdmin();
         if (!$admin) {
@@ -32,11 +56,39 @@ class AdminController extends BaseController {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
 
-        $stmt = $this->db->query(
+        $where = [];
+        $params = [];
+
+        $status = trim((string)($_GET['status'] ?? ''));
+        if (in_array($status, ['active', 'suspended', 'disabled'], true)) {
+            $where[] = 'status = ?';
+            $params[] = $status;
+        }
+        $search = trim((string)($_GET['search'] ?? ''));
+        if ($search !== '') {
+            $where[] = '(name LIKE ? OR email LIKE ?)';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
+        $whereSql = $where !== [] ? ' WHERE ' . implode(' AND ', $where) : '';
+
+        $page = $this->pagination();
+        $limitSql = $page !== null ? ' LIMIT ' . $page['limit'] . ' OFFSET ' . $page['offset'] : '';
+
+        $stmt = $this->db->prepare(
             "SELECT user_id, name, email, role, status, created_at, suspended_at, suspension_reason
-             FROM Users ORDER BY user_id DESC"
+             FROM Users{$whereSql} ORDER BY user_id DESC{$limitSql}"
         );
-        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $response = ['success' => true, 'data' => $rows];
+        if ($page !== null) {
+            $countStmt = $this->db->prepare("SELECT COUNT(*) FROM Users{$whereSql}");
+            $countStmt->execute($params);
+            $response['pagination'] = $this->paginationMeta($page, (int)$countStmt->fetchColumn());
+        }
+        return $response;
     }
 
     public function updateUserStatus(string|int $id): array {
@@ -44,6 +96,8 @@ class AdminController extends BaseController {
         if (!$admin) {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
+
+        $this->enforceRateLimit('admin_action', $this->clientIp(), 60, 60, 'Trop d’actions administratives. Réessayez dans une minute.');
 
         $userId = (int)$id;
         $data = $this->getRequestData();
@@ -130,13 +184,44 @@ class AdminController extends BaseController {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
 
-        $stmt = $this->db->query(
+        $where = [];
+        $params = [];
+
+        $status = trim((string)($_GET['status'] ?? ''));
+        if (in_array($status, ['draft', 'pending_review', 'published', 'suspended', 'closed', 'archived'], true)) {
+            $where[] = 'c.status = ?';
+            $params[] = $status;
+        }
+        $search = trim((string)($_GET['search'] ?? ''));
+        if ($search !== '') {
+            $where[] = '(c.title LIKE ? OR u.name LIKE ? OR u.email LIKE ?)';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
+        $whereSql = $where !== [] ? ' WHERE ' . implode(' AND ', $where) : '';
+
+        $page = $this->pagination();
+        $limitSql = $page !== null ? ' LIMIT ' . $page['limit'] . ' OFFSET ' . $page['offset'] : '';
+
+        $stmt = $this->db->prepare(
             "SELECT c.campaign_id, c.title, c.status, c.is_draft, c.suspension_reason, c.created_at,
                     u.user_id AS organizer_id, u.name AS organizer_name, u.email AS organizer_email
              FROM Campaign c JOIN Users u ON u.user_id = c.organiser_id
-             ORDER BY c.campaign_id DESC"
+             {$whereSql} ORDER BY c.campaign_id DESC{$limitSql}"
         );
-        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $response = ['success' => true, 'data' => $rows];
+        if ($page !== null) {
+            $countStmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM Campaign c JOIN Users u ON u.user_id = c.organiser_id{$whereSql}"
+            );
+            $countStmt->execute($params);
+            $response['pagination'] = $this->paginationMeta($page, (int)$countStmt->fetchColumn());
+        }
+        return $response;
     }
 
     public function moderateCampaign(string|int $id): array {
@@ -144,6 +229,8 @@ class AdminController extends BaseController {
         if (!$admin) {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
+
+        $this->enforceRateLimit('admin_action', $this->clientIp(), 60, 60, 'Trop d’actions administratives. Réessayez dans une minute.');
 
         $campaignId = (int)$id;
         $data = $this->getRequestData();
@@ -234,13 +321,137 @@ class AdminController extends BaseController {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
 
-        $stmt = $this->db->query(
+        $where = [];
+        $params = [];
+
+        $status = trim((string)($_GET['status'] ?? ''));
+        if (in_array($status, ['pending', 'under_review', 'approved', 'paid', 'rejected', 'cancelled'], true)) {
+            $where[] = 'p.status = ?';
+            $params[] = $status;
+        }
+        $whereSql = $where !== [] ? ' WHERE ' . implode(' AND ', $where) : '';
+
+        $page = $this->pagination();
+        $limitSql = $page !== null ? ' LIMIT ' . $page['limit'] . ' OFFSET ' . $page['offset'] : '';
+
+        $stmt = $this->db->prepare(
             "SELECT p.*, c.title, u.name AS organizer_name, u.email AS organizer_email
              FROM Payout p JOIN Campaign c ON c.campaign_id = p.campaign_id
              JOIN Users u ON u.user_id = c.organiser_id
-             ORDER BY p.created_at DESC"
+             {$whereSql} ORDER BY p.created_at DESC{$limitSql}"
         );
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $response = ['success' => true, 'data' => $rows];
+        if ($page !== null) {
+            $countStmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM Payout p JOIN Campaign c ON c.campaign_id = p.campaign_id JOIN Users u ON u.user_id = c.organiser_id{$whereSql}"
+            );
+            $countStmt->execute($params);
+            $response['pagination'] = $this->paginationMeta($page, (int)$countStmt->fetchColumn());
+        }
+        return $response;
+    }
+
+    /**
+     * GET /api/admin/audit — journal d'audit paginé (lecture seule).
+     */
+    public function audit(): array {
+        if (!$this->requireSuperAdmin()) {
+            return ['success' => false, 'message' => 'Accès administrateur requis.'];
+        }
+
+        $where = [];
+        $params = [];
+        $action = trim((string)($_GET['action'] ?? ''));
+        if ($action !== '') {
+            $where[] = 'a.action = ?';
+            $params[] = $action;
+        }
+        $resourceType = trim((string)($_GET['resource_type'] ?? ''));
+        if ($resourceType !== '') {
+            $where[] = 'a.resource_type = ?';
+            $params[] = $resourceType;
+        }
+        $whereSql = $where !== [] ? ' WHERE ' . implode(' AND ', $where) : '';
+
+        $page = $this->pagination(50, 200) ?? ['page' => 1, 'per_page' => 50, 'limit' => 50, 'offset' => 0];
+
+        $stmt = $this->db->prepare(
+            "SELECT a.audit_id, a.actor_id, u.name AS actor_name, u.email AS actor_email,
+                    a.action, a.resource_type, a.resource_id, a.reason,
+                    a.old_values, a.new_values, a.ip_address, a.created_at
+             FROM AuditLog a
+             LEFT JOIN Users u ON u.user_id = a.actor_id
+             {$whereSql} ORDER BY a.audit_id DESC
+             LIMIT {$page['limit']} OFFSET {$page['offset']}"
+        );
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM AuditLog a{$whereSql}");
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        return ['success' => true, 'data' => $rows, 'pagination' => $this->paginationMeta($page, $total)];
+    }
+
+    /**
+     * GET /api/admin/settings — paramètres globaux de la plateforme.
+     */
+    public function settings(): array {
+        if (!$this->requireSuperAdmin()) {
+            return ['success' => false, 'message' => 'Accès administrateur requis.'];
+        }
+
+        $stmt = $this->db->query("SELECT setting_key, setting_value, updated_at FROM PlatformSetting ORDER BY setting_key");
         return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    /**
+     * POST /api/admin/settings — met à jour les paramètres (frais de plateforme).
+     */
+    public function updateSettings(): array {
+        $admin = $this->requireSuperAdmin();
+        if (!$admin) {
+            return ['success' => false, 'message' => 'Accès administrateur requis.'];
+        }
+
+        $data = $this->getRequestData();
+        if (!isset($data['platform_fee_rate']) || !is_numeric($data['platform_fee_rate'])) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Taux de frais de plateforme invalide.'];
+        }
+
+        $rate = round((float)$data['platform_fee_rate'], 2);
+        if ($rate < 0 || $rate > 100) {
+            http_response_code(400);
+            return ['success' => false, 'message' => 'Le taux de frais doit être compris entre 0 et 100.'];
+        }
+
+        $current = $this->db->prepare("SELECT setting_value FROM PlatformSetting WHERE setting_key = 'platform_fee_rate'");
+        $current->execute();
+        $oldValue = $current->fetchColumn();
+
+        $stmt = $this->db->prepare(
+            "INSERT INTO PlatformSetting (setting_key, setting_value, updated_by)
+             VALUES ('platform_fee_rate', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)"
+        );
+        $stmt->execute([number_format($rate, 2, '.', ''), (int)$admin['user_id']]);
+
+        $this->writeAudit(
+            (int)$admin['user_id'],
+            'platform_fee_updated',
+            'setting',
+            null,
+            null,
+            ['platform_fee_rate' => $oldValue],
+            ['platform_fee_rate' => number_format($rate, 2, '.', '')]
+        );
+
+        return ['success' => true, 'message' => 'Paramètres mis à jour.', 'platform_fee_rate' => $rate];
     }
 
     public function reviewPayout(string|int $id): array {
@@ -248,6 +459,8 @@ class AdminController extends BaseController {
         if (!$admin) {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
+
+        $this->enforceRateLimit('admin_action', $this->clientIp(), 60, 60, 'Trop d’actions administratives. Réessayez dans une minute.');
 
         $payoutId = (int)$id;
         $data = $this->getRequestData();
@@ -307,8 +520,11 @@ class AdminController extends BaseController {
         }
 
         // Retrait Mobile Money réel via AangaraaPay (best-effort, hors transaction).
+        // Le statut `approved` reste la valeur par défaut ; on ne passe à `paid`
+        // que si la passerelle confirme explicitement le succès. Aucun changement
+        // de l'endpoint ni du format de réponse : simple enrichissement du suivi.
         if ($action === 'approve' && AangaraaPay::configured()) {
-            $gatewayTxnId = null;
+            $gatewayTxnId = '';
             try {
                 $withdrawal = AangaraaPay::withdraw([
                     'phone_number' => (string)$payout['wallet_number'],
@@ -318,8 +534,16 @@ class AdminController extends BaseController {
                     'transaction_id' => (string)$payout['payout_id'],
                 ]);
                 $gatewayTxnId = trim((string)($withdrawal['transaction_id'] ?? $withdrawal['txnid'] ?? $withdrawal['reference'] ?? $withdrawal['id'] ?? ''));
-                $this->db->prepare("UPDATE Payout SET payment_reference = ?, processed_at = NOW() WHERE payout_id = ?")
-                    ->execute([$gatewayTxnId !== '' ? $gatewayTxnId : json_encode($withdrawal, JSON_UNESCAPED_UNICODE), $payoutId]);
+
+                if (AangaraaPay::isSuccess($withdrawal)) {
+                    $this->db->prepare("UPDATE Payout SET status = 'paid', payment_reference = ?, processed_at = NOW() WHERE payout_id = ? AND status = 'approved'")
+                        ->execute([$gatewayTxnId !== '' ? $gatewayTxnId : null, $payoutId]);
+                    $this->writeAudit((int)$admin['user_id'], 'payout_paid', 'payout', $payoutId, null, ['status' => 'approved'], ['status' => 'paid', 'payment_reference' => $gatewayTxnId]);
+                } else {
+                    $this->db->prepare("UPDATE Payout SET payment_reference = ?, processed_at = NOW() WHERE payout_id = ? AND status = 'approved'")
+                        ->execute([$gatewayTxnId !== '' ? $gatewayTxnId : json_encode($withdrawal, JSON_UNESCAPED_UNICODE), $payoutId]);
+                    error_log('[IVote] Retrait AangaraaPay non confirmé (payout ' . $payoutId . ') : ' . json_encode($withdrawal, JSON_UNESCAPED_UNICODE));
+                }
             } catch (Throwable $error) {
                 error_log('[IVote] Retrait AangaraaPay échoué (payout ' . $payoutId . ') : ' . $error->getMessage());
             }
@@ -333,6 +557,8 @@ class AdminController extends BaseController {
         if (!$admin) {
             return ['success' => false, 'message' => 'Accès administrateur requis.'];
         }
+
+        $this->enforceRateLimit('admin_action', $this->clientIp(), 60, 60, 'Trop d’actions administratives. Réessayez dans une minute.');
 
         $data = $this->getRequestData();
         $broadcast = filter_var($data['broadcast'] ?? false, FILTER_VALIDATE_BOOLEAN);

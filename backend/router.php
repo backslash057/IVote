@@ -28,7 +28,9 @@ $urlpatterns = [
     new Route("/campaigns/new", "/routes/new_campaign.php", "GET"),
     new Route("/vote/{code}", "/routes/campaign_page.php", "GET"),
     new Route("/campaigns/{code}", "/routes/campaign_dashboard.php", "GET"),
-    new Route("/campaigns/{id}/dashboard", "/routes/campaign_dashboard.php", "GET"),
+    
+    new Route("/payment/return", "/routes/payment_return.php", "GET"),
+    
     new Route("/dashboard", "/routes/dashboard.php", "GET"),
     new Route("/admin", "/routes/admin.php", "GET"),
     new Route("/admin/notifications", "/routes/notifications.php", "GET"),
@@ -96,6 +98,9 @@ $urlpatterns = [
     new Route("/api/admin/payouts", "AdminController@payouts", "GET"),
     new Route("/api/admin/payouts/{id}/review", "AdminController@reviewPayout", "POST"),
     new Route("/api/admin/notifications", "AdminController@sendNotification", "POST"),
+    new Route("/api/admin/audit", "AdminController@audit", "GET"),
+    new Route("/api/admin/settings", "AdminController@settings", "GET"),
+    new Route("/api/admin/settings", "AdminController@updateSettings", "POST"),
 
     // API: Notifications
     new Route("/api/notifications", "NotificationController@index", "GET"),
