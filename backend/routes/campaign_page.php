@@ -35,7 +35,7 @@ $publicCampaignUrl = $publicOrigin . '/vote/' . rawurlencode($campaignCode);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/public/ivote_logo.svg" type="image/svg+xml">
     <title><?= htmlspecialchars($campaignTitle, ENT_QUOTES, 'UTF-8') ?> - IVote</title>
     <meta property="og:title" content="<?= htmlspecialchars($campaignTitle, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:description" content="<?= htmlspecialchars($campaignDescription, ENT_QUOTES, 'UTF-8') ?>">
